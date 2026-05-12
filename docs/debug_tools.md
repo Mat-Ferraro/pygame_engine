@@ -1,5 +1,3 @@
-# Debug Tools
-
 ## Purpose
 
 The debug package provides development-time visibility into runtime behavior.

@@ -1,5 +1,3 @@
-# Layout System
-
 ## Purpose
 
 The layout system controls how widgets are positioned and sized.
@@ -224,3 +222,45 @@ Not every widget must use a layout helper.
 - Should fill/stretch behavior exist immediately?
 - Should layout objects be stateless helpers or stateful instances?
 - Should grid support mixed fixed and weighted columns early on?
+
+---
+
+## Locked Implementation Decisions
+
+### Layout helpers are stateless functions
+**Decision:** Each layout helper (`row`, `column`, `grid`, `anchor`) is a
+plain function. Bounds in, list of rects out. No state, no instances.
+
+**Reason:** Stateless functions are trivially composable, trivially testable,
+and require no lifecycle management. Container widgets that need to rerun
+layout just call the function again.
+
+### Uniform cell sizing in v1 grid
+**Decision:** `grid()` uses uniform cell sizing only. All cells are the same
+`item_size`. Mixed fixed/weighted column sizing is a future expansion.
+
+**Reason:** Uniform sizing covers the real v1 use cases. Mixed sizing
+significantly increases complexity for little immediate benefit.
+
+### No `get_min_size()` in v1
+**Decision:** Widgets do not expose size hints in v1. Layout helpers receive
+explicit `item_size` arguments. `get_min_size()` and `measure()` are noted
+as future additions in `widget_contract.md`.
+
+**Reason:** Measurement requires widgets to know their own content size
+(e.g. text width), which in turn requires font/theme access. Deferring keeps
+the layout system clean until those systems exist.
+
+### No fill/stretch in v1
+**Decision:** Items are fixed size. The group is centred within the padded
+bounds. Fill/stretch weights are a future expansion.
+
+**Reason:** Fixed sizing plus alignment covers all v1 composition needs.
+
+### Shared `_shared.py` for alignment logic
+**Decision:** `Align` type and `_resolve_align()` live in a private
+`_shared.py` module shared by `row.py` and `column.py`. Not part of the
+public API.
+
+**Reason:** Keeps alignment logic in one place without duplicating it in
+both modules or exposing it as a public API surface.

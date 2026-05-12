@@ -1,5 +1,3 @@
-# Widget Contract
-
 ## Purpose
 
 Widgets are reusable UI building blocks used across scenes.
@@ -249,3 +247,47 @@ Accepted direction:
 - How much keyboard-navigation support belongs in the base layer?
 - Should theme access be injected or globally resolved at runtime?
 - When should measurement APIs be added beyond assigned rects?
+
+---
+
+## Locked Implementation Decisions
+
+### Theme access is globally resolved, not injected
+**Decision:** Widgets call `get_active_theme()` from `theme/runtime.py` when
+they need style data. Theme is not passed at widget construction.
+
+**Reason:** Injection at every widget constructor call adds significant
+ceremony with no concrete benefit in a personal framework where all call sites
+are controlled. A single stable global accessor in `theme/runtime.py` keeps it
+swappable without the verbosity.
+
+### No keyboard navigation in the base layer
+**Decision:** `focused` state exists on `Widget` so the infrastructure is
+present, but focus traversal logic belongs in container widgets. The base
+widget only responds to keyboard events when `focused = True` — it does not
+manage which widget is focused or how focus moves between widgets.
+
+**Reason:** Focus traversal is a container-level concern. Adding it to the
+base widget would bloat every widget with behavior most won't use.
+
+### `_handle_event_widget` is the override point, not `handle_event`
+**Decision:** Subclasses override `_handle_event_widget` rather than
+`handle_event` directly. `handle_event` owns the visibility/enabled guards and
+hover update, so overriding it directly would require every subclass to
+re-implement those guards.
+
+### Hover is updated before the enabled check
+**Decision:** `handle_event` updates `hovered` via MOUSEMOTION before
+checking `enabled`. A disabled widget still tracks hover so it can show a
+correct visual state (e.g. a not-allowed cursor style) without processing
+any actual interaction.
+
+### `visible=False` skips everything; `enabled=False` skips events only
+**Decision:** A non-visible widget returns False from `handle_event`
+immediately and its `render` and `update` are no-ops. A non-enabled widget
+still renders and updates (so animations continue) but does not process events.
+
+### No measurement API in v1
+**Decision:** `set_rect(rect)` is the only layout interface on `Widget`.
+`measure()` and `get_min_size()` are noted as future additions in the contract
+doc but are not implemented. Layout helpers assign rects directly.

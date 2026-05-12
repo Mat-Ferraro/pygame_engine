@@ -1,5 +1,3 @@
-# Using pygame_engine
-
 ## Purpose
 
 This document explains how a future game project should use `pygame_engine`.

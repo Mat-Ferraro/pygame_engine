@@ -1,5 +1,3 @@
-# Roadmap
-
 ## Purpose
 
 This roadmap defines the planned development path for `pygame_engine`.

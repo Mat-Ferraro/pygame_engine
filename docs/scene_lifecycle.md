@@ -1,5 +1,3 @@
-# Scene Lifecycle
-
 ## Purpose
 
 Scenes define high-level application flow such as menus, gameplay screens, editors, overlays, and modal layers.
@@ -230,3 +228,37 @@ Scenes should not need to implement transition math directly unless they have sp
 - Should `handle_event` first route to the scene or to the root widget by default?
 - Should scenes have explicit transparency metadata in addition to block flags?
 - Should transition objects be scene-owned or manager-owned?
+
+---
+
+## Locked Implementation Decisions
+
+### `handle_event` routes to root widget first, then scene
+**Decision:** `Scene.handle_event` offers the event to `root_widget` first.
+Only if the widget does not consume it does the event reach
+`_handle_event_scene`, which subclasses override for scene-level logic.
+
+**Reason:** The widget layer is the UI — if a button is clicked, the button
+should consume it before the scene's logic sees it. This mirrors every mature
+UI framework and the browser's event model. Subclasses that want different
+routing override `handle_event` directly.
+
+### `_handle_event_scene` is the override point, not `handle_event`
+**Decision:** Subclasses override `_handle_event_scene` to add scene-level
+input handling, keeping the widget-first routing intact automatically.
+Subclasses that need full control override `handle_event` directly.
+
+### SceneStack owns traversal policy; SceneManager owns lifecycle hooks
+**Decision:** `SceneStack` handles push/pop container operations and the three
+frame traversals. `SceneManager` is the only caller of `on_enter`, `on_exit`,
+`on_pause`, `on_resume`. This keeps the two responsibilities cleanly separated.
+
+### `replace()` does not pause/resume the scene below
+**Decision:** `replace()` calls `on_exit` on the removed scene and `on_enter`
+on the new one. It does not call `on_pause`/`on_resume` on the scene below,
+because replace is a lateral move (same stack depth), not a push.
+
+### Transitions deferred to post-spine pass
+**Decision:** `transitions.py` is a documented stub. Transition support will
+be added after `Scene`, `SceneManager`, `Widget`, and `Application` are stable
+and exercised by real examples.

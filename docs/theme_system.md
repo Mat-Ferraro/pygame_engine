@@ -1,5 +1,3 @@
-# Theme System
-
 ## Purpose
 
 The theme system defines how the engine expresses visual style in a reusable, structured way.

@@ -1,5 +1,3 @@
-# Asset Pipeline
-
 ## Purpose
 
 The asset pipeline defines how engine and project assets are found, loaded, cached, and used.

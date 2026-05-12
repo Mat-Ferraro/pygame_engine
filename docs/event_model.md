@@ -1,5 +1,3 @@
-# Event Model
-
 ## Purpose
 
 The event model defines how loosely-coupled subsystems communicate inside `pygame_engine`.

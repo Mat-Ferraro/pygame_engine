@@ -1,5 +1,3 @@
-# State Model
-
 ## Purpose
 
 The state model defines what kinds of runtime state belong in the shared engine infrastructure and how that state should be represented.

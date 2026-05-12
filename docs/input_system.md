@@ -1,5 +1,3 @@
-# Input System
-
 ## Purpose
 
 The input system translates raw pygame input into engine-friendly runtime input state and higher-level actions.
@@ -260,3 +258,47 @@ These should not be scattered as random hardcoded keys.
 - Should action queries be string-based, enum-based, or constant-based?
 - Should text input be supported in the first version?
 - Should `InputManager` process events directly or consume already-polled event lists?
+
+---
+
+## Locked Implementation Decisions
+
+### Actions are plain string constants
+**Decision:** `actions.py` defines action names as plain module-level string
+constants. No enum.
+
+**Reason:** Enums add import friction and no concrete benefit at this scale.
+Strings are easy to extend in game projects without touching the engine.
+
+### Mouse buttons are NOT mapped to actions
+**Decision:** Mouse position and button state are queried directly on
+`InputManager` (`was_mouse_pressed`, `is_mouse_down`, `get_mouse_pos`).
+Mouse clicks are not routed through the action system.
+
+**Reason:** Widgets handle mouse interaction via hit-testing against their
+rect. Routing mouse clicks through actions would add a layer with no benefit
+since widgets need the position anyway.
+
+### Text input deferred
+**Decision:** Text input (character entry, IME support) is not implemented
+in v1. `InputManager` handles command-style input only.
+
+**Reason:** Text input is a distinct mode that warrants its own handling.
+Adding it now would complicate `InputManager` before the core system is
+exercised by real usage.
+
+### `InputManager.update(events)` consumes the already-polled event list
+**Decision:** `Application` calls `pygame.event.get()` once per frame and
+passes the list to both `input_manager.update(events)` and the event routing
+loop. `InputManager` does not call `pygame.event.get()` itself.
+
+**Reason:** Prevents double-polling. The event list is polled once and shared.
+
+### One-frame transient state cleared at the start of `update()`
+**Decision:** `_keys_pressed`, `_keys_released`, `_mouse_pressed`,
+`_mouse_released`, and `_wheel_delta` are all cleared at the top of
+`update()` before processing the new event list.
+
+**Reason:** These are strictly per-frame states. Clearing at the top of
+update (rather than end of frame) means they are always accurate for the
+frame in which they occurred and gone by the next.

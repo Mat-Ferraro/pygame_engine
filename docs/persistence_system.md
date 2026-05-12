@@ -1,5 +1,3 @@
-# Persistence System
-
 ## Purpose
 
 The persistence system provides reusable save/load infrastructure for projects built with `pygame_engine`.

@@ -1,5 +1,3 @@
-# Application Contract
-
 ## Purpose
 
 The `Application` is the top-level runtime owner for a project built on `pygame_engine`.
@@ -282,3 +280,34 @@ This is a suggested direction, not a locked API.
 - Should rendering always target the main display surface, or support an off-screen render target?
 - Should there be a distinct bootstrap stage before full startup?
 - How much service access should scenes receive directly?
+
+---
+
+## Locked Implementation Decisions
+
+The following open questions have been resolved during initial implementation.
+
+### `Application` owns `InputManager` directly
+Input is not externally attached. `Application` constructs and owns
+`InputManager` during `_startup()`. This avoids over-engineering for a
+personal framework with no plugin requirements.
+
+### Single `run(initial_scene)` entry point
+No separate `start()` / `run()` split. One call does everything: startup,
+loop, shutdown. Shutdown is guaranteed via a `finally` block. Construction
+(`__init__`) is side-effect-free — pygame is not touched until `run()`.
+
+### Rendering always targets the main display surface
+Off-screen render targets are not part of v1. The display surface is created
+once in `_startup()` and re-created only on window resize.
+
+### Scene service access is deferred
+How much of `Application`'s services scenes can access directly is decided
+when `Scene` and `SceneManager` are written.
+
+---
+
+## Remaining Open Questions
+
+- Should backbuffer clear colour be configurable via `AppConfig`?
+- How much service access should scenes receive directly? *(deferred to Scene contract)*

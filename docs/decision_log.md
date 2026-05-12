@@ -2,247 +2,309 @@
 
 ## Purpose
 
-This document records important architecture and process decisions for `pygame_engine`.
+This log records significant architecture decisions chronologically, including
+the reasoning and any alternatives considered.
 
-Use it to capture:
-- what was decided
-- why it was decided
-- alternatives considered
-- any follow-up actions
-
-This is a living document and should be updated as the engine evolves.
-
----
-
-## Entry Format
-
-Recommended format:
-
-### YYYY-MM-DD - Topic
-**Decision**  
-What was decided.
-
-**Reason**  
-Why the decision was made.
-
-**Alternatives considered**  
-What other options were considered.
-
-**Follow-up**  
-Any consequences, future work, or related docs to update.
+For the current accepted rule set, see `accepted_decisions.md`.
 
 ---
 
 ## Decisions
 
-### 2026-05-11 - Project identity
-**Decision**  
-`pygame_engine` is a reusable lightweight pygame framework, not a game-specific codebase or genre engine.
+### 2025 — Initial Architecture Phase
 
-**Reason**  
-The goal is to support multiple future projects and reduce repeated framework work without overbuilding into a genre-specific architecture.
+#### Engine scope: lightweight framework, not genre engine
+**Decision:** `pygame_engine` is a lightweight reusable framework. It does not
+contain game-specific hero, combat, inventory, or campaign logic.
 
-**Alternatives considered**  
-Using it as a single game codebase or as a game-template-only repository.
-
-**Follow-up**  
-Keep game-specific rules and content out of engine modules.
+**Reason:** A generic foundation is more reusable across future projects. Genre
+logic belongs in the consuming game.
 
 ---
 
-### 2026-05-11 - Public API style
-**Decision**  
-Prefer clean top-level imports such as:
-```python
-from pygame_engine.ui import Button
-from pygame_engine.scene import Scene
-```
+#### Stack-based scene model
+**Decision:** The runtime uses a `SceneStack`. `SceneManager` coordinates it.
+Scene replacement is a convenience wrapper over push/pop.
 
-**Reason**  
-This is clearer and more intentional for engine consumers than relying on deep internal import paths.
-
-**Alternatives considered**  
-Exposing primarily deep module imports.
-
-**Follow-up**  
-Use package `__init__.py` files to maintain a stable public API surface.
+**Reason:** Overlays, pause menus, and modal dialogs require layered scene
+rendering and input blocking. A flat single-scene model can't represent these
+cleanly.
 
 ---
 
-### 2026-05-11 - Scene runtime model
-**Decision**  
-Use a stack-based runtime model for scenes.
+#### `handle_event` returns `bool`
+**Decision:** Scene and widget `handle_event` methods return `True` (consumed)
+or `False` (not consumed).
 
-**Reason**  
-A stack naturally supports overlays, pause menus, modals, debug layers, and replacement behavior through one unified model.
-
-**Alternatives considered**  
-A replace-only scene model with a separate overlay mechanism.
-
-**Follow-up**  
-`SceneManager` should coordinate a `SceneStack`.
+**Reason:** This is the correct signal for layered input routing. Without
+consumption signals, every layer processes every event regardless of whether a
+layer above already handled it.
 
 ---
 
-### 2026-05-11 - Event consumption contract
-**Decision**  
-Scene and widget `handle_event` methods should return `bool`.
+#### Widget base does not own children
+**Decision:** The base `Widget` class does not automatically manage child
+widgets. Child management belongs to container subclasses.
 
-**Reason**  
-This makes layered UI/input routing significantly easier to reason about.
-
-**Alternatives considered**  
-Void-return event handlers or out-of-band consumption tracking.
-
-**Follow-up**  
-Reflect this in scene and widget contract docs.
+**Reason:** A base that auto-manages children forces complexity on widgets that
+don't need it. Containers opt into that behavior explicitly.
 
 ---
 
-### 2026-05-11 - Scene and UI relationship
-**Decision**  
-Scenes may optionally own a `root_widget`.
+#### Composition over inheritance for UI
+**Decision:** Larger UI pieces should be built from smaller widgets and
+containers rather than through deep inheritance hierarchies.
 
-**Reason**  
-This keeps scenes focused on flow/orchestration while allowing a structured UI tree.
-
-**Alternatives considered**  
-Keeping scenes fully separate from widget trees or having scenes manually manage many unrelated widgets.
-
-**Follow-up**  
-Document the scene/root-widget relationship clearly.
+**Reason:** Deep inheritance makes behavior harder to trace and widgets harder
+to reuse independently.
 
 ---
 
-### 2026-05-11 - Base widget responsibility
-**Decision**  
-Base widgets do not automatically manage children.
+#### Action/binding split in input
+**Decision:** `actions.py` defines intent-based action names. `bindings.py`
+maps physical keys to those actions. `InputManager` resolves queries against
+the bound state.
 
-**Reason**  
-This keeps the base widget simpler and assigns hierarchy management to container widgets where it belongs.
-
-**Alternatives considered**  
-Making every widget tree-capable by default.
-
-**Follow-up**  
-Container widgets should define child traversal behavior.
+**Reason:** Decouples game/engine behavior from physical device details. Makes
+rebinding possible without touching any game logic.
 
 ---
 
-### 2026-05-11 - Layout scope for version one
-**Decision**  
-Version one layout will use assigned rects and simple layout helpers.
+#### Asset loading: lazy + cached, fail loudly
+**Decision:** Assets are loaded on first request and cached. Missing assets
+raise clear errors during development.
 
-**Reason**  
-This provides useful structure without prematurely building a full advanced layout engine.
-
-**Alternatives considered**  
-Implementing a more complex measure/layout system immediately.
-
-**Follow-up**  
-Leave room for future expansion, but keep v1 simple.
+**Reason:** Lazy loading avoids unnecessary startup cost. Hard failure during
+development prevents silent broken-asset bugs.
 
 ---
 
-### 2026-05-11 - Theme access direction
-**Decision**  
-Widgets may access styling through a stable runtime theme interface.
+#### Theme: tokens → defaults → runtime
+**Decision:** Raw design values live in `tokens.py`. A baseline theme is
+assembled in `defaults.py`. The active theme is accessed through `runtime.py`.
 
-**Reason**  
-This supports centralized styling without requiring a heavy injected styling architecture in version one.
-
-**Alternatives considered**  
-Hardcoded styling or full external style injection from the start.
-
-**Follow-up**  
-Keep theme values centralized and documented.
+**Reason:** Separates raw values from assembled themes from runtime access.
+Allows projects to override at any layer without touching widget logic.
 
 ---
 
-### 2026-05-11 - Asset loading philosophy
-**Decision**  
-Use lazy loading with caching and fail loudly during development.
+#### Persistence: engine owns infrastructure, game owns schema
+**Decision:** The engine provides save slot management, safe file I/O,
+versioning, and migration hooks. The consuming game defines the save payload
+and its meaning.
 
-**Reason**  
-This reduces startup complexity while keeping debugging straightforward.
-
-**Alternatives considered**  
-Full eager preload by default or placeholder-based silent fallback.
-
-**Follow-up**  
-Document missing-asset behavior and cache ownership clearly.
+**Reason:** Persistence infrastructure is generic and reusable. The save schema
+is inherently game-specific and has no place in the engine.
 
 ---
 
-### 2026-05-11 - Debug tools position
-**Decision**  
-Debug tools are important and should be supported, but remain optional runtime layers.
+#### State: engine state only, no game domain state
+**Decision:** The `state/` package holds engine-level runtime state only (debug
+flags, theme name, etc.). Game-specific state belongs in the consuming project.
 
-**Reason**  
-Game development benefits heavily from debug support, but the core runtime should not depend on debug systems to function.
-
-**Alternatives considered**  
-Treating debug systems as mandatory runtime architecture or as an afterthought.
-
-**Follow-up**  
-Integrate debug tools cleanly through app/input/runtime design.
+**Reason:** Mixing game state into the engine couples the engine to specific
+games and makes it non-reusable.
 
 ---
 
-### 2026-05-11 - Engine state boundary
-**Decision**  
-Engine-level shared state should remain limited to engine/runtime concerns.
+### Infrastructure decisions
 
-**Reason**  
-This keeps the framework generic and prevents it from absorbing game-specific domain state.
+#### Repository layout: docs/examples/tests at repo root
+**Decision:** `docs/`, `examples/`, and `tests/` live at the **repo root**,
+not inside the `pygame_engine/` importable package.
 
-**Alternatives considered**  
-Using the engine state store as a general-purpose global state container.
-
-**Follow-up**  
-Keep gameplay/project state in consuming projects.
-
----
-
-### 2026-05-11 - Typing philosophy
-**Decision**  
-Use moderate but intentional typing.
-
-**Reason**  
-Important contracts and reusable utilities benefit from typing, but overly strict typing should not block early engine development.
-
-**Alternatives considered**  
-Very light typing or very strict typing everywhere immediately.
-
-**Follow-up**  
-Type core contracts and public APIs first.
+**Reason:** Developer tooling, documentation, and test code should not be part
+of the installed package. Placing them inside the package tree pollutes the
+import namespace and ships unnecessary files to consumers. Standard Python
+convention (PEP 517 / setuptools) is to keep source under a named package
+directory with tooling alongside it.
 
 ---
 
-### 2026-05-11 - Version one boundary
-**Decision**  
-Version one will focus on the runtime spine, core UI primitives, basic layout, input, theme, asset loading, and examples.
+#### Headless pygame in tests via conftest.py
+**Decision:** `tests/conftest.py` provides a session-scoped `pygame_init`
+fixture that initialises pygame without opening a display window.
 
-**Reason**  
-This keeps the first usable version focused and achievable.
-
-**Alternatives considered**  
-Expanding version one to include more ambitious systems immediately.
-
-**Follow-up**  
-Use the roadmap to guide implementation order.
+**Reason:** Tests that touch pygame primitives (`Rect`, `Surface`, etc.) would
+crash without initialisation. A shared session fixture avoids duplicating this
+setup across test files and makes the suite runnable in headless CI
+environments.
 
 ---
 
-### 2026-05-11 - Documentation discipline
-**Decision**  
-Update docs whenever a core contract changes, a framework-wide design decision is made, or a naming/organization rule changes.
+#### pyproject.toml as single build/tool config
+**Decision:** All build configuration, dependency declarations, pytest config,
+and mypy config live in `pyproject.toml`. No `setup.py`, `setup.cfg`, or
+separate `pytest.ini`/`mypy.ini` files.
 
-**Reason**  
-The docs are intended to be a living development reference, not a stale afterthought.
+**Reason:** Single source of truth for project tooling. PEP 517 standard.
 
-**Alternatives considered**  
-Only updating docs at major milestones.
+---
 
-**Follow-up**  
-Use this decision log together with system docs and the accepted-decisions document.
+### Application implementation — initial pass
+
+#### Single `run(initial_scene)` entry point
+**Decision:** `Application.__init__()` is side-effect-free. All pygame
+initialisation happens inside `run()`, which calls `_startup()`, then
+`_loop()`, then guarantees `_shutdown()` via a `finally` block.
+
+**Reason:** Construction should be cheap and safe to call in tests or tooling
+without opening a window. One entry point is simpler than a `start()` / `run()`
+split with no concrete reason to split them.
+
+---
+
+#### `Application` owns `InputManager`
+**Decision:** `Application` constructs and owns `InputManager` during
+`_startup()`. It is not injected from outside.
+
+**Reason:** Injection adds complexity with no benefit in a personal framework
+that has no plugin or multi-app requirements.
+
+---
+
+#### dt clamping via `AppConfig.max_dt`
+**Decision:** Delta time is clamped to `config.max_dt` (default 0.1 s) each
+frame. Clamping is disabled by setting `max_dt = 0`.
+
+**Reason:** Without clamping, pausing in a debugger or moving the window
+produces a massive dt spike that breaks physics and animations. A small default
+clamp is almost always the right choice.
+
+---
+
+#### Frame loop order is locked
+**Decision:** The frame loop follows this fixed order:
+poll events → update input → route events → update scenes → update debug →
+clear → render scenes → render debug → flip → tick clock / compute dt.
+
+**Reason:** This order is documented in `application_contract.md`. Locking it
+now prevents gradual drift across future edits. Changes to the order require
+updating both the code and the doc.
+
+---
+
+### Scene system — initial pass
+
+#### Root widget gets first refusal on events
+**Decision:** `Scene.handle_event` passes the event to `root_widget` first.
+Scene-level logic is in `_handle_event_scene`, called only if the widget does
+not consume the event.
+
+**Reason:** UI should always handle its own input before scene logic sees it.
+A button click should not also trigger scene-level behavior.
+
+#### SceneStack owns traversal; SceneManager owns lifecycle
+**Decision:** Split responsibilities cleanly — `SceneStack` handles frame
+traversal and blocking policy. `SceneManager` handles all lifecycle hook
+calls. Neither does the other's job.
+
+**Reason:** Mixing lifecycle and traversal logic in one class makes both
+harder to reason about and test independently.
+
+#### Transitions deferred
+**Decision:** `transitions.py` is a documented stub. Not implemented in v1
+spine pass.
+
+**Reason:** Transitions are a polish concern. Getting the core
+Application → Scene → Widget → SceneManager chain working and tested first
+avoids building polish on an unstable foundation.
+
+---
+
+### Widget base — initial pass
+
+#### Theme access: globally resolved
+**Decision:** Widgets call `get_active_theme()` from `theme/runtime.py`.
+Not injected at construction.
+
+**Reason:** Injection adds ceremony at every call site in a framework where
+all consumers are controlled. One stable global accessor is simpler.
+
+#### No keyboard navigation in the base
+**Decision:** `focused` flag exists; traversal logic belongs in containers.
+
+**Reason:** Focus traversal is a container concern. The base widget handles
+keyboard input when focused but does not decide which widget is focused.
+
+#### `_handle_event_widget` is the subclass override point
+**Decision:** `handle_event` owns guards and hover. Subclasses override
+`_handle_event_widget` to add interaction logic without re-implementing guards.
+
+#### Widget wired into Scene
+**Decision:** `Scene.root_widget` is now typed as `Widget | None`. All three
+frame methods (`handle_event`, `update`, `render`) delegate to `root_widget`
+with real calls rather than TODO stubs.
+
+---
+
+### Input system — initial pass
+
+#### Actions are plain string constants
+**Decision:** Module-level string constants in `actions.py`. No enum.
+**Reason:** Simple to extend per-project, no import overhead.
+
+#### Mouse buttons stay off the action system
+**Decision:** Direct queries only (`was_mouse_pressed`, `get_mouse_pos`).
+**Reason:** Widgets need the position for hit-testing regardless; routing
+mouse through actions adds a layer with no benefit.
+
+#### Text input deferred
+**Decision:** Not in v1. Flagged for later.
+**Reason:** Distinct mode that warrants its own design when a real use case
+drives it.
+
+#### `update(events)` receives the polled list from Application
+**Decision:** Application polls once, passes the list to InputManager and
+the event routing loop.
+**Reason:** No double-polling; single source of truth for the frame's events.
+
+---
+
+### Layout system — initial pass
+
+#### Stateless functions
+**Decision:** `row`, `column`, `grid`, `anchor` are plain functions.
+**Reason:** No lifecycle, trivially composable and testable.
+
+#### Uniform grid cells in v1
+**Decision:** All grid cells the same size. Mixed sizing deferred.
+**Reason:** Covers v1 needs; mixed sizing adds complexity for no immediate gain.
+
+#### No measurement API in v1
+**Decision:** No `get_min_size()` or `measure()`. Layout takes explicit sizes.
+**Reason:** Measurement needs font/theme access. Deferred until those exist.
+
+---
+
+### Button and Label — initial pass
+
+#### Label caches its rendered surface with a dirty flag
+**Decision:** Label renders text to a `pygame.Surface` once and caches it.
+The cache is invalidated (dirty=True) when `text`, `colour`, or `rect` changes.
+
+**Reason:** `font.render()` is not free. Calling it every frame for every
+label on screen wastes CPU. The dirty flag keeps updates correct without
+re-rendering unnecessarily.
+
+#### Button uses an internal Label for text
+**Decision:** `Button` owns a `Label` instance for its text. It does not
+call `font.render()` directly.
+
+**Reason:** Reuses Label's caching, alignment, and future theme integration
+without duplicating text rendering logic.
+
+#### Button click semantics: press inside + release inside
+**Decision:** `on_click` fires only when mouse button is pressed inside the
+button rect AND released inside it. Releasing outside after pressing inside
+cancels the click.
+
+**Reason:** Standard button click semantics. Prevents accidental clicks when
+the user drags away after pressing.
+
+#### Colours are class-level constants for now
+**Decision:** Button and Label use explicit colour arguments / class-level
+colour constants. Theme lookup is noted as a future step in both docstrings.
+
+**Reason:** Theme system doesn't exist yet. Hardcoded defaults with a clear
+upgrade path is better than blocking widget development on theme.
