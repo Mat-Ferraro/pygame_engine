@@ -18,6 +18,7 @@ Version one currently aims to provide:
 - `Button`
 - `Label`
 - `TextBlock`
+- `Stack`
 - basic row/column layout
 - theme runtime/defaults
 - input manager/actions/bindings
@@ -45,10 +46,9 @@ Deliverables:
 - baseline widget lifecycle
 - boolean event-consumption contracts
 
-Success criteria:
-- a simple example scene runs through the real app loop
-- scene transitions and stack pushes work cleanly
-- base widget contract is documented and implemented
+Status:
+- implemented first-pass runtime spine
+- hardened with targeted tests
 
 ---
 
@@ -65,10 +65,9 @@ Deliverables:
 - action-based input queries
 - basic focus and input routing direction
 
-Success criteria:
-- example UI can be placed through layout helpers
-- widgets render using theme values
-- mapped actions work consistently in scenes/widgets
+Status:
+- implemented first pass
+- examples continue to grow
 
 ---
 
@@ -87,10 +86,12 @@ Deliverables:
 - tooltip
 - toast
 
-Success criteria:
-- example screens can be built from engine widgets without ad hoc code
-- widgets have consistent event/update/render behavior
-- theme/layout/input integration is functioning
+Status:
+- `Panel`, `Button`, `Label`, `TextBlock`, and `Stack` implemented
+- `Dropdown`, `Tooltip`, and `Toast` still pending
+
+Current recommendation:
+- continue here next with `Dropdown`, then feedback widgets
 
 ---
 
@@ -107,11 +108,6 @@ Deliverables:
 - sprite rendering helpers
 - particle emitter and presets
 
-Success criteria:
-- animations work on widgets/scenes
-- particle examples run cleanly
-- common rendering helpers remove repetitive code
-
 ---
 
 ## Phase 5 - Assets, Audio, Debug Tools
@@ -127,11 +123,6 @@ Deliverables:
 - debug log integration
 - inspector/console foundations
 
-Success criteria:
-- examples can load assets predictably
-- debug tools help diagnose runtime behavior
-- audio and assets are not manually managed in every example
-
 ---
 
 ## Phase 6 - Public API and Usability Cleanup
@@ -145,11 +136,6 @@ Deliverables:
 - stronger README usage guidance
 - consistent docs updates
 - test growth where needed
-
-Success criteria:
-- starting a new project with the engine feels straightforward
-- imports are clean and intentional
-- examples act as reliable references
 
 ---
 
@@ -167,9 +153,6 @@ Potential directions:
 - more robust debug tooling
 - packaging/release workflow
 
-Recommended rule:
-- only expand after usage reveals real patterns
-
 ---
 
 ## Ongoing Rules
@@ -184,9 +167,8 @@ Throughout all phases:
 
 ## Current Priority
 
-The current highest-priority implementation area is:
-1. `Scene`
-2. `SceneStack`
-3. `SceneManager`
-4. `Application`
-5. `Widget`
+The current highest-priority work is:
+1. implement `Dropdown`
+2. implement `Tooltip` and `Toast`
+3. add tests for `TextBlock` and `Stack`
+4. expand examples before moving into secondary systems

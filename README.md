@@ -5,49 +5,39 @@ A lightweight, reusable framework built on top of pygame.
 ## Purpose
 
 `pygame_engine` provides a clean foundation for pygame projects:
-
 - Application loop and lifecycle management
 - Stack-based scene flow
 - Reusable UI primitives and layout helpers
 - Theme system with design tokens and runtime overrides
 - Action-based input abstraction
 - Asset loading with lazy caching
-- Persistence infrastructure (save/load plumbing)
+- Persistence infrastructure
 - Audio manager
 - Animation and particle helpers
 - Debug overlay tools
 
-It is not a genre-specific gameplay engine. Game-specific logic, domain models, and save schemas belong in the projects built on top of it.
+It is not a genre-specific gameplay engine.
 
-## Project Structure
+## Current State
 
-```
-pygame_engine/          ← repo root
-├── docs/               ← architecture and design documentation
-├── examples/           ← runnable usage examples and smoke tests
-├── tests/              ← automated tests
-├── pygame_engine/      ← the importable package
-│   ├── animation/
-│   ├── app/
-│   ├── assets/
-│   ├── audio/
-│   ├── debug/
-│   ├── events/
-│   ├── graphics/
-│   ├── input/
-│   ├── layout/
-│   ├── particles/
-│   ├── persistence/
-│   ├── scene/
-│   ├── state/
-│   ├── theme/
-│   ├── ui/
-│   └── utils/
-├── main.py             ← development entry point
-├── pyproject.toml
-├── CHANGELOG.md
-└── README.md
-```
+`pygame_engine` is in active early development.
+
+### Implemented now
+- `Application`, `AppConfig`
+- `Scene`, `SceneManager`, `SceneStack`
+- `InputManager`, action constants, default bindings
+- Layout helpers: `anchor`, `row`, `column`, `grid`
+- Theme runtime/default theme
+- `Widget`, `Panel`, `Stack`, `Button`, `Label`, `TextBlock`
+- Runnable examples and a growing automated test suite
+
+### Planned / stubbed
+- `Dropdown`
+- Debug tools
+- Asset pipeline implementation
+- Persistence implementation
+- Audio implementation
+- Animation/particle implementation
 
 ## Usage
 
@@ -56,28 +46,11 @@ from pygame_engine.app import Application, AppConfig
 from pygame_engine.scene import Scene
 
 class MyScene(Scene):
-    ...
+    pass
 
 config = AppConfig(title="My Game", width=1280, height=720)
 app = Application(config)
-app.start(MyScene())
-app.run()
+app.run(MyScene())
 ```
 
-See `docs/using_pygame_engine.md` for a full usage guide.
-See `examples/` for runnable examples.
-
-## Documentation
-
-All architecture decisions and system contracts live in `docs/`.
-
-Key documents:
-- `docs/architecture.md` — overall system design
-- `docs/accepted_decisions.md` — current accepted rules
-- `docs/decision_log.md` — historical decision record
-- Individual system docs for scene, UI, input, theme, etc.
-
-## Requirements
-
-- Python 3.11+
-- pygame-ce (or pygame 2.x)
+See `docs/using_pygame_engine.md` for the broader usage guide.

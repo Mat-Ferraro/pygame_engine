@@ -8,92 +8,56 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Infrastructure
-- Established project structure: repo root contains `docs/`, `examples/`, `tests/`, and the `pygame_engine/` package
-- Moved `docs/`, `examples/`, and `tests/` out of the importable package tree to repo root
-- Added `CHANGELOG.md`
-- Added `tests/conftest.py` with headless pygame fixture
-- All source modules are stubs pending implementation
+### Fixed
+- `tests/test_button.py` — added missing `import pygame` and `from pygame_engine.ui.controls import Button`
+- `tests/test_scene_manager.py` — added missing `from pygame_engine.scene import Scene, SceneManager`
+- `pygame_engine/ui/base/widget.py` — removed stale docstring note saying theme access was deferred; theme is live via `get_theme()`
+- `examples/example_buttons.py` — replaced transparent root `Panel` with `Stack` (the correct container for this use case)
+- `docs/docs_roadmap.md` — removed (was a duplicate of `docs/roadmap.md`; `roadmap.md` is the canonical file)
+
+### Added — Tests
+- `tests/test_timers.py` — full coverage of `Timer` and `Cooldown`: start/stop/reset, progress, elapsed/remaining, Cooldown.fired and carry-over
+- `tests/test_layout.py` — full coverage of `anchor`, `row`, `column`, `grid`: positions, sizes, spacing, padding, alignment, edge cases
+- `tests/test_rects.py` — full coverage of rect helpers: construction, inset, snap, clamp_inside, split_horizontal/vertical
+- `tests/test_button.py` — added `test_no_click_without_prior_press_inside`
+- `tests/test_scene_manager.py` — added `test_pop_empty_stack_returns_none`, `test_is_empty_reflects_stack_state`
 
 ---
 
-_Development is currently in the architecture and infrastructure phase._
+## Previous work (summary)
 
-### Added — Application spine
-- `pygame_engine/app/config.py` — `AppConfig` dataclass (window, timing, display, paths, debug)
-- `pygame_engine/app/application.py` — `Application` class with full contract-level signatures:
-  - Side-effect-free `__init__`
-  - Single `run(initial_scene)` entry point
-  - `_startup` / `_loop` / `_shutdown` lifecycle
-  - Fixed frame-loop order (poll → input → events → update → render → flip → dt)
-  - `_handle_event` with priority routing stubs
-  - `_compute_dt` with configurable clamping
-  - `stop()`, `config`, `is_running`, `display_surface`, `clock` properties
-- `pygame_engine/app/__init__.py` — exports `Application`, `AppConfig`
-- Locked four Application open questions; recorded in `decision_log.md` and `application_contract.md`
+### Infrastructure
+- Established repo structure: `docs/`, `examples/`, `tests/` at root; `pygame_engine/` as the importable package
+- `pyproject.toml`, `.gitignore`, `README.md`, `CHANGELOG.md`
+- `tests/conftest.py` — headless pygame session fixture
 
-### Added — Scene system
-- `pygame_engine/scene/scene.py` — `Scene` base class with full lifecycle hooks and frame methods
-- `pygame_engine/scene/scene_stack.py` — `SceneStack` with blocking-policy traversals (input/update/render)
-- `pygame_engine/scene/scene_manager.py` — `SceneManager` with push/pop/replace/clear_and_push and lifecycle hook orchestration
-- `pygame_engine/scene/transitions.py` — documented stub (deferred)
-- `pygame_engine/scene/__init__.py` — exports `Scene`, `SceneManager`, `SceneStack`
-- `pygame_engine/app/application.py` — wired `SceneManager`; `run()` now accepts `Scene`; shutdown pops all scenes cleanly; `scene_manager` property added
+### Runtime spine
+- `pygame_engine/app/` — `Application`, `AppConfig`
+- `pygame_engine/scene/` — `Scene`, `SceneManager`, `SceneStack`, `transitions.py` (stub)
+- `pygame_engine/ui/base/` — `Widget`
 
-### Added — Widget base
-- `pygame_engine/ui/base/widget.py` — `Widget` base class with rect, interaction state (visible, enabled, hovered, focused), frame methods, `set_rect`, `contains_point`, `is_interactive` property
-- `pygame_engine/ui/base/__init__.py` — exports `Widget`
-- `pygame_engine/ui/__init__.py` — clean public import surface; other widgets stubbed/commented until implemented
-- `pygame_engine/scene/scene.py` — `root_widget` now typed as `Widget | None`; all three frame method TODOs resolved with real delegation calls
-- Locked Widget open questions; recorded in `widget_contract.md` and `decision_log.md`
+### Input
+- `pygame_engine/input/` — `InputManager`, `actions`, `DEFAULT_BINDINGS`
 
-### Added — Spine example
-- `examples/example_app.py` — minimal end-to-end example exercising the full chain: AppConfig → Application → SceneManager → ExampleScene → ColourBlock (Widget subclass)
-- `main.py` — uncommented to run example_app by default
+### Layout
+- `pygame_engine/layout/` — `anchor`, `row`, `column`, `grid`, `_shared`
 
-### Added — Input system
-- `pygame_engine/input/actions.py` — canonical action string constants (NAV_UP/DOWN/LEFT/RIGHT, CONFIRM, CANCEL, PAUSE, DEBUG_TOGGLE, INSPECTOR_TOGGLE, CONSOLE_TOGGLE)
-- `pygame_engine/input/bindings.py` — default key-to-action mapping (DEFAULT_BINDINGS)
-- `pygame_engine/input/input_manager.py` — per-frame input state: keyboard (pressed/released/down), mouse (pos, delta, buttons, wheel), action queries, rebinding support
-- `pygame_engine/input/__init__.py` — exports InputManager and actions module
-- `pygame_engine/app/application.py` — InputManager wired in; `update(events)` called each frame; `input_manager` property added
-- `examples/example_app.py` — ESC quit now uses `was_action_pressed(actions.CANCEL)` instead of raw key check
+### Theme
+- `pygame_engine/theme/` — `tokens`, `defaults` (full dataclass hierarchy), `runtime` (`get_theme` / `set_theme` / `reset_theme`)
 
-### Added — Layout helpers
-- `pygame_engine/layout/_shared.py` — internal `Align` type and `_resolve_align()` helper
-- `pygame_engine/layout/anchor.py` — `anchor()`: place a rect at a named point within bounds (9 anchor points, margin, offset)
-- `pygame_engine/layout/row.py` — `row()`: distribute items horizontally with spacing, padding, vertical align
-- `pygame_engine/layout/column.py` — `column()`: distribute items vertically with spacing, padding, horizontal align
-- `pygame_engine/layout/grid.py` — `grid()`: uniform grid with spacing and padding, centred block
-- `pygame_engine/layout/__init__.py` — exports `anchor`, `column`, `grid`, `row`
-- `examples/example_app.py` — replaced manual rect math with `anchor(screen, (200, 120), "center")`
+### UI widgets
+- `pygame_engine/ui/text/` — `Label`, `TextBlock`
+- `pygame_engine/ui/controls/` — `Button`
+- `pygame_engine/ui/containers/` — `Panel`, `Stack`
 
-### Added — Button and Label widgets
-- `pygame_engine/ui/text/label.py` — `Label`: single-line text widget, cached render surface, left/center/right alignment, dirty-flag invalidation on text/colour/rect change
-- `pygame_engine/ui/text/__init__.py` — exports `Label`
-- `pygame_engine/ui/controls/button.py` — `Button`: clickable widget with `on_click` callback, normal/hovered/pressed/disabled visual states, internal `Label` for text
-- `pygame_engine/ui/controls/__init__.py` — exports `Button`
-- `pygame_engine/ui/__init__.py` — now exports `Widget`, `Button`, `Label`
-- `examples/example_buttons.py` — demonstrates Button, Label, column layout, disabled state, status updates, ESC via action system
-- `main.py` — updated to run example_buttons by default
+### Utils
+- `pygame_engine/utils/` — `Timer`, `Cooldown`, `colors`, `rects`, `mathx`
 
-### Added — Theme system
-- `pygame_engine/theme/tokens.py` — raw design tokens: `Colours`, `Spacing`, `Typography`, `Radii`, `Borders`, `Timing`
-- `pygame_engine/theme/defaults.py` — `Theme` dataclass hierarchy: `SurfaceStyle`, `TextStyle`, `ButtonTheme`, `LabelTheme`, `PanelTheme`, `ColoursTheme`, `TypographyTheme`, `SpacingTheme`; `DEFAULT_THEME` instance
-- `pygame_engine/theme/runtime.py` — `get_theme()`, `set_theme()`, `reset_theme()` module-level accessors
-- `pygame_engine/theme/__init__.py` — public exports
-- `pygame_engine/app/application.py` — `app.theme` property and `app.set_theme()` method added
-- `pygame_engine/ui/text/label.py` — reads font size, colour, family from theme; `_UNSET` sentinel for explicit override detection
-- `pygame_engine/ui/controls/button.py` — all colour constants replaced with `get_theme()` lookups; all states styled via `theme.button.*`
-- `examples/example_buttons.py` — scene background uses `theme.colours.bg_base`
+### Examples
+- `examples/example_app.py` — spine smoke test
+- `examples/example_buttons.py` — Panel, Button, Label, layout
+- `examples/example_scene.py` — scene push/pop/replace/overlay
+- `examples/example_layout.py` — all four layout helpers
 
-### Added — Panel container and utils
-- `pygame_engine/ui/containers/panel.py` — `Panel`: child list, themed background/border, event routing (reverse order), update/render (forward order), optional clipping
-- `pygame_engine/ui/containers/__init__.py` — exports `Panel`
-- `pygame_engine/ui/__init__.py` — now exports `Widget`, `Panel`, `Button`, `Label`
-- `pygame_engine/utils/timers.py` — `Timer` (countdown, progress, remaining) and `Cooldown` (auto-reset interval timer)
-- `pygame_engine/utils/colors.py` — `lerp_color`, `lerp_color_alpha`, `brighten`, `with_alpha`, `hex_to_rgb`, `rgb_to_hex`, `hsv_to_rgb`
-- `pygame_engine/utils/rects.py` — `rect_from_center`, `rect_from_corners`, `inset`, `inset_xy`, `snap_to_grid`, `clamp_inside`, `split_horizontal`, `split_vertical`
-- `pygame_engine/utils/mathx.py` — `clamp`, `clamp01`, `remap`, `remap_clamped`, `lerp`, `lerp_clamped`, `smoothstep`, `smootherstep`, `angle_to_vec`, `vec_to_angle`, `approach`
-- `pygame_engine/utils/__init__.py` — documents public import paths
-- `examples/example_buttons.py` — updated to use `Panel` instead of `WidgetGroup` stand-in; buttons now inside a themed panel; all colours from theme
+### Tests
+- `tests/test_widget.py`, `test_button.py`, `test_scene_stack.py`, `test_scene_manager.py`, `test_timers.py`, `test_layout.py`, `test_rects.py`

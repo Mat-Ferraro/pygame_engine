@@ -35,8 +35,9 @@ class Button(Widget):
     Visual states — normal, hovered, pressed, disabled — are all styled
     through the active theme (``theme.button.*``).
 
-    ``on_click`` fires when the mouse is pressed and released inside the
-    button rect (standard click semantics). Assign None to disable.
+    Click semantics: ``on_click`` fires only when the mouse is pressed
+    inside the button AND released inside it. Releasing outside after
+    pressing inside cancels the click without consuming the release event.
     """
 
     def __init__(
@@ -93,7 +94,8 @@ class Button(Widget):
                 self._pressed_inside = False
                 if self.rect.collidepoint(event.pos):
                     self._fire_click()
-                return True
+                    return True   # consumed — click completed inside
+            return False          # not our press, or released outside
 
         return False
 

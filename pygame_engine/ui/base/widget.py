@@ -51,8 +51,11 @@ class Widget:
 
     Does NOT provide:
     - child management (see container widgets: Panel, Stack)
-    - theme access (deferred until theme/runtime.py exists)
     - layout measurement (v1 uses assigned rects only)
+
+    Theme access is globally resolved via ``pygame_engine.theme.runtime.get_theme()``.
+    Widgets call ``get_theme()`` directly when they need style values — no injection
+    needed. See ``theme/runtime.py`` for details.
 
     Interaction state rules
     -----------------------
