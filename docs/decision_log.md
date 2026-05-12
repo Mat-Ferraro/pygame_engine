@@ -308,3 +308,54 @@ colour constants. Theme lookup is noted as a future step in both docstrings.
 
 **Reason:** Theme system doesn't exist yet. Hardcoded defaults with a clear
 upgrade path is better than blocking widget development on theme.
+
+---
+
+### Theme system — initial pass
+
+#### Dataclasses for theme objects
+**Decision:** `Theme` and sub-objects are `@dataclass` instances.
+**Reason:** Dot-access, autocomplete, type safety. No boilerplate. Override
+via `dataclasses.replace()`.
+
+#### Module-level accessor pattern
+**Decision:** `get_theme()` / `set_theme()` in `runtime.py`. No injection.
+**Reason:** Injection adds friction at every call site in a controlled codebase.
+
+#### No widget-level theme caching
+**Decision:** Widgets call `get_theme()` each frame.
+**Reason:** Attribute lookup is free. Caching adds complexity for nothing.
+
+#### Widget hardcoded colours replaced
+**Decision:** `Button` and `Label` now read all colour/size values from
+`get_theme()`. Class-level colour constants removed from `Button`.
+`Label` uses `_UNSET` sentinel to distinguish "not supplied" from explicit
+`None`, falling back to theme values when not supplied.
+
+---
+
+### Panel and utils — initial pass
+
+#### Panel owns a child list, not a layout helper
+**Decision:** Panel manages children and handles traversal. Layout is
+applied externally via layout helpers before adding children.
+**Reason:** Keeps Panel focused on containment. Layout and containment
+are separate concerns — mixing them would make Panel harder to reuse.
+
+#### Panel event routing is reverse add-order
+**Decision:** Events route through children in reverse add-order (last
+added = topmost = first to receive events). Rendering is forward add-order.
+**Reason:** Last-added widgets visually sit on top; they should also have
+first refusal on input. This matches standard UI layering expectations.
+
+#### Panel clipping is opt-in via `clip=True`
+**Decision:** Clipping is off by default. Pass `clip=True` to scissor
+child rendering to the panel rect.
+**Reason:** Most panels don't need clipping and it has a small cost.
+Scrollable containers and overflow cases opt in explicitly.
+
+#### utils modules are pure functions / classes with no engine dependencies
+**Decision:** `timers.py`, `colors.py`, `rects.py`, `mathx.py` have no
+imports from the rest of `pygame_engine`. They are standalone utilities.
+**Reason:** Utils should be the lowest layer — nothing else should depend
+on them, and they should never create circular imports.

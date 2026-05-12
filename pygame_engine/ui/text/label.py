@@ -3,78 +3,86 @@ ui/text/label.py
 
 Label widget for pygame_engine.
 
-Renders a single line of text within its rect. Supports horizontal
-alignment, colour, and font size. Font is created once at construction
-and cached — not recreated every frame.
-
-Theme integration is a future step. For now, Label accepts explicit
-style arguments with sensible defaults. When theme/runtime.py exists,
-Label will fall back to theme values when arguments are not supplied.
+Renders a single line of text within its rect. Reads default style
+values from the active theme. Per-instance overrides can be passed at
+construction and take precedence over theme values.
 
 Usage::
 
     from pygame_engine.ui.text.label import Label
 
-    label = Label(
-        rect=pygame.Rect(100, 100, 200, 40),
-        text="Hello, world",
-        font_size=22,
-        colour=(220, 220, 220),
-        align="center",
-    )
+    # Theme-styled (uses theme.label.text defaults)
+    label = Label(rect, "Hello")
+
+    # Explicit override
+    label = Label(rect, "Hello", font_size=28, colour=(255, 200, 0))
 """
 
 from __future__ import annotations
 
 import pygame
 
+from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
+
+_UNSET = object()   # sentinel for "caller did not supply this argument"
 
 
 class Label(Widget):
     """
     Single-line text display widget.
 
-    Does not handle events (returns False from handle_event).
-    Does not manage children.
+    Style values fall back to the active theme when not explicitly
+    supplied. The font is created once at construction and cached.
+    The rendered text surface is cached and re-rendered only when text,
+    colour, or rect changes (dirty-flag pattern).
 
-    Alignment controls how the text sits horizontally within the rect.
-    Vertical centering is always applied.
+    Does not handle events. Does not manage children.
     """
 
     def __init__(
         self,
         rect: pygame.Rect,
         text: str = "",
-        font_size: int = 20,
-        colour: tuple[int, int, int] = (220, 220, 220),
-        align: str = "center",
-        font_name: str = "segoeui,helvetica,arial",
-        bold: bool = False,
+        font_size: object = _UNSET,
+        colour:    object = _UNSET,
+        align:     str    = "center",
+        font_name: object = _UNSET,
+        bold:      bool   = False,
     ) -> None:
         """
         Args:
             rect:      Position and size of this label.
             text:      Text to display.
-            font_size: Font size in points.
-            colour:    Text colour as an RGB tuple.
-            align:     Horizontal alignment — ``"left"``, ``"center"``,
-                       or ``"right"``.
-            font_name: Comma-separated font name hints for SysFont.
-            bold:      Whether to render the font bold.
+            font_size: Font size in points. Defaults to ``theme.label.text.font_size``.
+            colour:    RGB text colour. Defaults to ``theme.label.text.colour``.
+            align:     Horizontal alignment — ``"left"``, ``"center"``, ``"right"``.
+            font_name: Comma-separated SysFont hints. Defaults to ``theme.typography.family``.
+            bold:      Render bold text.
         """
         super().__init__(rect)
 
-        self._text:      str                    = text
-        self._colour:    tuple[int, int, int]   = colour
-        self._align:     str                    = align
-        self._font_size: int                    = font_size
-        self._font_name: str                    = font_name
-        self._bold:      bool                   = bold
+        theme = get_theme()
 
-        self._font:    pygame.font.Font | None  = None
-        self._surface: pygame.Surface | None    = None   # cached render
-        self._dirty:   bool                     = True   # needs re-render
+        self._text:      str                  = text
+        self._colour:    tuple[int, int, int] = (
+            colour if colour is not _UNSET                        # type: ignore[assignment]
+            else theme.label.text.colour
+        )
+        self._font_size: int = (
+            font_size if font_size is not _UNSET                  # type: ignore[assignment]
+            else theme.label.text.font_size
+        )
+        self._font_name: str = (
+            font_name if font_name is not _UNSET                  # type: ignore[assignment]
+            else theme.typography.family
+        )
+        self._align: str  = align
+        self._bold:  bool = bold
+
+        self._font:    pygame.font.Font | None = None
+        self._surface: pygame.Surface | None   = None
+        self._dirty:   bool                    = True
 
         self._build_font()
 
@@ -111,7 +119,6 @@ class Label(Widget):
             self._dirty = True
 
     def set_rect(self, rect: pygame.Rect) -> None:
-        """Override to invalidate cached render on resize."""
         self.rect = rect
         self._dirty = True
 
@@ -135,22 +142,17 @@ class Label(Widget):
         self._dirty = True
 
     def _render_text(self) -> None:
-        """Re-render the text surface and cache it."""
         if self._font is None:
             return
         self._surface = self._font.render(self._text, True, self._colour)
         self._dirty = False
 
     def _align_rect(self, text_rect: pygame.Rect) -> pygame.Rect:
-        """Position the text surface rect within self.rect."""
-        # Always centre vertically
         text_rect.centery = self.rect.centery
-
         if self._align == "left":
             text_rect.left = self.rect.left
         elif self._align == "right":
             text_rect.right = self.rect.right
-        else:  # center
+        else:
             text_rect.centerx = self.rect.centerx
-
         return text_rect

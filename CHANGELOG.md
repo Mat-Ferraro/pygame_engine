@@ -76,3 +76,24 @@ _Development is currently in the architecture and infrastructure phase._
 - `pygame_engine/ui/__init__.py` — now exports `Widget`, `Button`, `Label`
 - `examples/example_buttons.py` — demonstrates Button, Label, column layout, disabled state, status updates, ESC via action system
 - `main.py` — updated to run example_buttons by default
+
+### Added — Theme system
+- `pygame_engine/theme/tokens.py` — raw design tokens: `Colours`, `Spacing`, `Typography`, `Radii`, `Borders`, `Timing`
+- `pygame_engine/theme/defaults.py` — `Theme` dataclass hierarchy: `SurfaceStyle`, `TextStyle`, `ButtonTheme`, `LabelTheme`, `PanelTheme`, `ColoursTheme`, `TypographyTheme`, `SpacingTheme`; `DEFAULT_THEME` instance
+- `pygame_engine/theme/runtime.py` — `get_theme()`, `set_theme()`, `reset_theme()` module-level accessors
+- `pygame_engine/theme/__init__.py` — public exports
+- `pygame_engine/app/application.py` — `app.theme` property and `app.set_theme()` method added
+- `pygame_engine/ui/text/label.py` — reads font size, colour, family from theme; `_UNSET` sentinel for explicit override detection
+- `pygame_engine/ui/controls/button.py` — all colour constants replaced with `get_theme()` lookups; all states styled via `theme.button.*`
+- `examples/example_buttons.py` — scene background uses `theme.colours.bg_base`
+
+### Added — Panel container and utils
+- `pygame_engine/ui/containers/panel.py` — `Panel`: child list, themed background/border, event routing (reverse order), update/render (forward order), optional clipping
+- `pygame_engine/ui/containers/__init__.py` — exports `Panel`
+- `pygame_engine/ui/__init__.py` — now exports `Widget`, `Panel`, `Button`, `Label`
+- `pygame_engine/utils/timers.py` — `Timer` (countdown, progress, remaining) and `Cooldown` (auto-reset interval timer)
+- `pygame_engine/utils/colors.py` — `lerp_color`, `lerp_color_alpha`, `brighten`, `with_alpha`, `hex_to_rgb`, `rgb_to_hex`, `hsv_to_rgb`
+- `pygame_engine/utils/rects.py` — `rect_from_center`, `rect_from_corners`, `inset`, `inset_xy`, `snap_to_grid`, `clamp_inside`, `split_horizontal`, `split_vertical`
+- `pygame_engine/utils/mathx.py` — `clamp`, `clamp01`, `remap`, `remap_clamped`, `lerp`, `lerp_clamped`, `smoothstep`, `smootherstep`, `angle_to_vec`, `vec_to_angle`, `approach`
+- `pygame_engine/utils/__init__.py` — documents public import paths
+- `examples/example_buttons.py` — updated to use `Panel` instead of `WidgetGroup` stand-in; buttons now inside a themed panel; all colours from theme

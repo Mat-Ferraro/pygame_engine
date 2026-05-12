@@ -31,6 +31,8 @@ import pygame
 
 from pygame_engine.app.config import AppConfig
 from pygame_engine.input.input_manager import InputManager
+from pygame_engine.theme.runtime import get_theme, set_theme
+from pygame_engine.theme.defaults import Theme
 from pygame_engine.scene.scene import Scene
 from pygame_engine.scene.scene_manager import SceneManager
 
@@ -123,7 +125,8 @@ class Application:
         pygame.display.set_caption(self._config.title)
 
         self._input_manager = InputManager()
-        # TODO: initialise ThemeRuntime
+        # Theme is globally accessible via get_theme(); no per-app instance needed.
+        # Projects can call set_theme() before or after run() to customise.
         # TODO: initialise AssetLoader
         # TODO: initialise AudioManager
         # TODO: initialise debug tools if config.debug
@@ -313,6 +316,29 @@ class Application:
                 "scene_manager is not available before Application.run() is called."
             )
         return self._scene_manager
+
+    @property
+    def theme(self) -> Theme:
+        """
+        The active theme.
+
+        Convenience accessor — equivalent to ``get_theme()`` from
+        ``pygame_engine.theme.runtime``. Projects can replace the theme
+        via ``set_theme()`` or ``app.set_theme()``.
+        """
+        return get_theme()
+
+    def set_theme(self, theme: Theme) -> None:
+        """
+        Replace the active theme.
+
+        Equivalent to calling ``pygame_engine.theme.runtime.set_theme()``.
+        Takes effect on the next frame.
+
+        Args:
+            theme: The new ``Theme`` instance to activate.
+        """
+        set_theme(theme)
 
     @property
     def input_manager(self) -> InputManager:

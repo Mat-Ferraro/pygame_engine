@@ -216,3 +216,52 @@ But actual visual identity values should live in `theme`, not `utils`.
 - Should widgets cache resolved style values?
 - Should theme changes at runtime be supported?
 - How should local widget style overrides interact with the active theme?
+
+---
+
+## Locked Implementation Decisions
+
+### Theme values are dataclasses, not plain dicts
+**Decision:** `Theme` and all sub-objects are `@dataclass` instances.
+
+**Reason:** Dot-access (`theme.button.normal.bg`), IDE autocomplete, and
+type safety with no boilerplate. Trivially overridable via
+`dataclasses.replace()`. Plain dicts have none of these benefits.
+
+### Module-level `get_theme()` / `set_theme()` accessor pattern
+**Decision:** The active theme is a module-level variable in `runtime.py`.
+Widgets call `get_theme()` each frame. Projects call `set_theme()` once
+at startup to customise.
+
+**Reason:** Injection at every widget constructor adds ceremony with no
+benefit in a personal framework. One stable global accessor is simpler and
+equally swappable.
+
+### Widgets do not cache resolved theme values
+**Decision:** Widgets call `get_theme()` and read attribute values each frame.
+No per-widget theme cache.
+
+**Reason:** `get_theme()` is a module-level attribute lookup — effectively
+free. No caching overhead is worth optimising at this scale.
+
+### Runtime theme swapping is supported
+**Decision:** `set_theme(theme)` replaces the active theme immediately.
+Widgets pick up the change on the next frame automatically.
+
+**Reason:** Costs nothing to support given the accessor pattern. Enables
+theme switching (e.g. dark/light mode) without any widget-level changes.
+
+### Local widget style overrides deferred to post-v1
+**Decision:** Widgets read purely from the active theme. Per-widget style
+override dicts are a future addition noted in the contract doc.
+
+**Reason:** Adds significant complexity for low immediate benefit. The theme
+system should be used and understood before adding an override layer on top.
+
+### `app.theme` and `app.set_theme()` convenience accessors added
+**Decision:** `Application` exposes `theme` (property) and `set_theme()`
+(method) as convenience wrappers over `get_theme()` / `set_theme()` from
+`theme.runtime`.
+
+**Reason:** Game code that already holds an `app` reference shouldn't need
+to separately import from `theme.runtime` for common operations.
