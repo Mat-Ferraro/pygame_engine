@@ -1,19 +1,15 @@
 """
 pygame_engine.audio
 
-Runtime audio management.
+Audio playback and positional audio.
 
 Public API::
 
     from pygame_engine.audio import AudioManager
-
-    # Via Application (preferred):
-    app.audio.play_music("music/theme.ogg")
-    app.audio.play_sfx(app.assets.sound("click.wav"))
-    app.audio.master_volume = 0.8
-    app.audio.muted = True
+    from pygame_engine.audio.positional import PositionalAudio, PositionalSource
 """
 
 from pygame_engine.audio.audio_manager import AudioManager
+from pygame_engine.audio.positional import PositionalAudio, PositionalSource
 
-__all__ = ["AudioManager"]
+__all__ = ["AudioManager", "PositionalAudio", "PositionalSource"]

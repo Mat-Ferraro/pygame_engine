@@ -17,9 +17,12 @@ from pygame_engine.ui.containers.panel import Panel
 from pygame_engine.ui.containers.scrollable import Scrollable
 from pygame_engine.ui.containers.stack import Stack
 from pygame_engine.ui.controls.button import Button
+from pygame_engine.ui.controls.checkbox import Checkbox
 from pygame_engine.ui.controls.dropdown import Dropdown
 from pygame_engine.ui.controls.input_field import InputField
 from pygame_engine.ui.controls.progress_bar import ProgressBar
+from pygame_engine.ui.controls.radio_group import RadioGroup
+from pygame_engine.ui.controls.slider import Slider
 from pygame_engine.ui.feedback.toast import Toast
 from pygame_engine.ui.feedback.tooltip import Tooltip
 from pygame_engine.ui.text.label import Label
@@ -31,9 +34,12 @@ __all__ = [
     "Scrollable",
     "Stack",
     "Button",
+    "Checkbox",
     "Dropdown",
     "InputField",
     "ProgressBar",
+    "RadioGroup",
+    "Slider",
     "Toast",
     "Tooltip",
     "Label",

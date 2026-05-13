@@ -1,6 +1,4 @@
 """
-scene/scene_manager.py
-
 SceneManager orchestrates scene flow for pygame_engine.
 
 It owns the SceneStack and is the only place that calls scene lifecycle
@@ -224,6 +222,22 @@ class SceneManager:
 
         # Let transition composite everything onto the display surface
         self._transition.render(surface, self._trans_surf)
+
+    def notify_resize(self, width: int, height: int) -> None:
+        """
+        Notify the current top-of-stack scene that the window was resized.
+
+        Calls ``on_resize(width, height)`` on the active scene only.
+        Scenes beneath the top are not notified — they will receive the
+        update when they resume.
+
+        Args:
+            width:  New window width in pixels.
+            height: New window height in pixels.
+        """
+        scene = self.current_scene
+        if scene is not None:
+            scene.on_resize(width, height)
 
     # ── Properties ────────────────────────────────────────────────────────────
 

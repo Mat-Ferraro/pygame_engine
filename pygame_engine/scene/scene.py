@@ -1,6 +1,4 @@
 """
-Base scene contract for pygame_engine.
-
 Scenes represent high-level application states: menus, gameplay screens,
 settings dialogs, pause overlays, loading screens, etc.
 
@@ -127,6 +125,27 @@ class Scene:
 
         Use this to resume timers, refresh input state assumptions, or
         restart any visual indicators that were paused.
+        """
+
+    def on_resize(self, width: int, height: int) -> None:
+        """
+        Called when the application window is resized.
+
+        Fired on the current top-of-stack scene immediately after the
+        display surface is recreated at the new size. Override to rebuild
+        any layout rects that were computed against the old dimensions::
+
+            def on_resize(self, width: int, height: int) -> None:
+                screen = pygame.Rect(0, 0, width, height)
+                self._panel.set_rect(anchor(screen, (400, 300), "center"))
+
+        The default implementation is a no-op. Scenes that compute layout
+        in ``render()`` using ``surface.get_rect()`` do not need to override
+        this.
+
+        Args:
+            width:  New window width in pixels.
+            height: New window height in pixels.
         """
 
     # ── Frame methods ─────────────────────────────────────────────────────────

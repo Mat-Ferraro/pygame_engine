@@ -1,6 +1,4 @@
 """
-ui/controls/dropdown.py
-
 Dropdown widget for pygame_engine.
 
 A button that opens a floating list of selectable options. The list
@@ -172,9 +170,11 @@ class Dropdown(Widget):
                 if idx >= 0:
                     self._select_and_close(idx)
                     return True
-                # Click outside — close without selecting
+                # Click outside — close without selecting.
+                # Consume the event so it does not fall through
+                # to widgets underneath the open list.
                 self.close()
-                return False
+                return True
 
             else:
                 # Click on closed button face — open
@@ -288,8 +288,9 @@ class Dropdown(Widget):
 
             # Highlight
             if i == self._hovered_item:
-                pygame.draw.rect(surface, theme.colours.bg_overlay,
-                                 item_rect, border_radius=radius)
+                hl = pygame.Surface(item_rect.size, pygame.SRCALPHA)
+                hl.fill((*theme.button.hovered.bg, 180))
+                surface.blit(hl, item_rect.topleft)
             elif i == self._selected:
                 hl = pygame.Surface(item_rect.size, pygame.SRCALPHA)
                 hl.fill((*theme.colours.border, 60))

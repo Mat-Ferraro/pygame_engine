@@ -1,6 +1,4 @@
 """
-assets/asset_loader.py
-
 Central asset loading and caching for pygame_engine.
 
 ``AssetLoader`` is the single entry point for all asset access. It owns
@@ -197,6 +195,33 @@ class AssetLoader:
             (missing sounds are non-fatal — a warning is logged instead).
         """
         return self._sounds.load(relative)
+
+    # ── Atlas loading ──────────────────────────────────────────────────────────
+
+    def atlas(
+        self,
+        image_relative: str,
+        meta_relative:  str,
+    ) -> "SpriteAtlas":
+        """
+        Load a pre-built sprite atlas from disk.
+
+        Args:
+            image_relative: Path to the atlas PNG, relative to
+                            ``asset_root/images/``.
+            meta_relative:  Path to the atlas JSON metadata, relative to
+                            ``asset_root/images/``.
+
+        Returns:
+            A ``SpriteAtlas`` ready for blitting.
+
+        Raises:
+            FileNotFoundError: If either file is missing.
+        """
+        from pygame_engine.atlas import SpriteAtlas
+        image_path = self._paths.resolve("images", image_relative)
+        meta_path  = self._paths.resolve("images", meta_relative)
+        return SpriteAtlas.load(image_path, meta_path)
 
     # ── Cache management ──────────────────────────────────────────────────────
 
