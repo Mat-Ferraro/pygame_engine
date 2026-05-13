@@ -1,71 +1,30 @@
-# Architecture
-
 ## Purpose
 
-`pygame_engine` is a lightweight reusable pygame framework.
+`pygame_engine` is a lightweight reusable pygame-ce framework for 2D games.
 
-It exists to provide:
-- a clean application loop
-- scene flow
-- reusable UI primitives
-- layout helpers
-- theme support
-- input abstraction
-- asset, persistence, audio, and debug support
-- animation and particle helpers
-- pub/sub event bus
+It provides: application loop, scene flow, UI toolkit, layout helpers,
+theme system, input abstraction, assets, audio, animation, particles,
+camera, tilemap, dialogue, pathfinding, lighting, localisation, and debug tools.
 
-It does **not** aim to be a genre-specific gameplay engine.
+It does **not** provide: genre-specific gameplay logic, 3D rendering,
+physics simulation, networking, or a visual editor.
 
 ---
 
 ## Project Direction
 
-The framework should stay generic enough to support multiple future games while
-still being practical to build with.
-
 ### Core goals
 - Keep the public API understandable.
-- Favor composition over inheritance.
+- Favour composition over inheritance.
 - Separate rendering, input, layout, state, persistence, and scene flow.
 - Make common pygame tasks easier without hiding pygame completely.
-- Prefer proven reusable abstractions over speculative abstraction.
-- Support good debug tooling without making debug systems mandatory to core
-  runtime behavior.
+- Support good debug tooling without making it mandatory.
 
 ### Non-goals
-- No game-specific hero, combat, inventory, campaign, or economy logic.
+- No game-specific hero, combat, inventory, or campaign logic.
 - No giant `core/` catch-all package.
 - No premature plugin ecosystem.
-- No advanced fully general layout engine.
-
----
-
-## Accepted Architecture Decisions
-
-The following decisions are currently accepted:
-
-- The engine is a **lightweight framework**, not a genre engine.
-- The runtime model is **stack-based** for scenes.
-- Clean public imports are preferred:
-  ```python
-  from pygame_engine.ui import Button
-  from pygame_engine.scene import Scene, FadeTransition
-  ```
-- Scene and widget `handle_event` methods should return `bool`.
-- Scenes may optionally own a `root_widget`.
-- Base widgets should not automatically manage children.
-- Layout uses assigned rects and simple helpers.
-- Theme values are resolved through a stable runtime theme interface.
-- Asset loading is lazy + cached and fails loudly during development.
-- Persistence infrastructure belongs in the engine; save schema meaning belongs
-  in the game.
-- Engine state remains engine-level only.
-- Typing is moderate but intentional.
-- Scenes receive `Application` directly as a constructor argument.
-- `Scene.render()` calls `overlay_render()` as a second pass for floating UI.
-
-For the full condensed list, see `accepted_decisions.md`.
+- No 3D rendering, physics engine, or networking.
 
 ---
 
@@ -73,192 +32,145 @@ For the full condensed list, see `accepted_decisions.md`.
 
 ```
 pygame_engine/              ← repo root
-├── docs/                   ← all architecture and design documentation
-├── examples/               ← runnable usage examples (manual smoke tests)
-├── game_template/          ← copy-and-start skeleton for new game projects
-├── tests/                  ← automated test suite (669+ tests)
-│   └── conftest.py         ← shared pytest fixtures (headless pygame init)
+├── docs/                   ← architecture and system documentation
+├── examples/               ← 12 runnable usage examples
+├── game_template/          ← copy-and-start skeleton for new projects
+├── tests/                  ← 1033+ automated tests (38 files)
+│   └── conftest.py
 ├── pygame_engine/          ← the importable Python package
-│   ├── __init__.py
-│   ├── animation/
-│   ├── app/
-│   ├── assets/
-│   ├── audio/
-│   ├── debug/
-│   ├── events/
-│   ├── graphics/
-│   ├── input/
-│   ├── layout/
-│   ├── particles/
-│   ├── persistence/
-│   ├── scene/
-│   ├── state/
-│   ├── theme/
-│   ├── ui/
-│   └── utils/
-├── main.py                 ← development entry point
+│   ├── animation/          ← Tween, SpriteAnimation, AnimationPlayer, StateMachine
+│   ├── app/                ← Application, AppConfig
+│   ├── assets/             ← AssetLoader, SpriteLoader, FontCache
+│   ├── atlas/              ← AtlasPacker, SpriteAtlas
+│   ├── audio/              ← AudioManager, PositionalAudio
+│   ├── camera/             ← Camera
+│   ├── debug/              ← DebugOverlay, DebugConsole, Inspector, crash_log
+│   ├── dialogue/           ← DialogueScript, DialogueRunner, DialogueBox
+│   ├── events/             ← EventBus, Signal
+│   ├── graphics/           ← draw helpers, nine-slice, sprite renderer
+│   ├── input/              ← InputManager, actions, bindings
+│   ├── layout/             ← anchor, row, column, grid, FlexRow, AnchorLayout
+│   ├── lighting/           ← LightingSystem, Light
+│   ├── locale/             ← LocaleStore
+│   ├── particles/          ← Emitter, presets
+│   ├── pathfinding/        ← ObstacleGrid, Pathfinder
+│   ├── persistence/        ← SaveManager, storage, serializers, migrations
+│   ├── scene/              ← Scene, SceneManager, SceneStack, transitions
+│   ├── state/              ← Observable, RuntimeFlags
+│   ├── theme/              ← tokens, defaults, runtime
+│   ├── tilemap/            ← Tileset, TileLayer, Tilemap
+│   ├── ui/                 ← 15 widgets, focus, containers
+│   └── utils/              ← mathx, colors, rects, timers
 ├── pyproject.toml
 ├── CHANGELOG.md
 └── README.md
 ```
-
-`docs/`, `examples/`, `tests/`, and `game_template/` live at the repo root,
-not inside the importable package. This keeps the installable package tree clean.
 
 ---
 
 ## Package Responsibilities
 
 ### `app/`
-Application startup and runtime orchestration.
-- `application.py`: main app object and main loop
-- `config.py`: runtime configuration values
+Application startup and runtime. `Application` owns the main loop,
+`AppConfig` holds configuration. Provides `set_resolution()`,
+`set_fullscreen()`, `toggle_fullscreen()`, `screen_rect`.
 
 ### `scene/`
-Scene contracts, scene flow, and transitions.
-- `scene.py`: base scene contract with `render()` + `overlay_render()` pass
-- `scene_manager.py`: scene orchestration with optional transition support
-- `scene_stack.py`: layered scenes and overlays
-- `transitions.py`: `FadeTransition`, `SlideTransition`, `CrossfadeTransition`
+Scene contracts, stack management, and transitions.
+- `scene.py` — `Scene` base with `on_enter/exit/pause/resume/resize`
+- `scene_manager.py` — push/pop/replace, transitions, `notify_resize()`
+- `transitions.py` — `FadeTransition`, `SlideTransition`, `CrossfadeTransition`
 
 ### `ui/`
-Reusable UI primitives.
-- `base/`: foundational widget contracts (`Widget`, `focusable`, focus ring)
-- `containers/`: `Panel`, `Stack`, `Scrollable`
-- `controls/`: `Button`, `Dropdown`, `InputField`, `ProgressBar`
-- `feedback/`: `Toast`, `Tooltip`
-- `text/`: `Label`, `TextBlock`
-- `focus.py`: `FocusManager` mixin for Tab/Shift+Tab traversal
+15 reusable widgets:
+- `base/` — `Widget`, focus ring
+- `containers/` — `Panel`, `Stack`, `Scrollable` (open-Dropdown priority routing)
+- `controls/` — `Button`, `Checkbox`, `Dropdown`, `InputField`, `ProgressBar`, `RadioGroup`, `Slider`
+- `feedback/` — `Toast`, `Tooltip`
+- `text/` — `Label`, `TextBlock`
 
 ### `layout/`
-Generic layout math and layout helpers.
-- `row.py`, `column.py`, `grid.py`, `anchor.py`
+- Stateless: `anchor`, `row`, `column`, `grid`
+- Stateful/responsive: `FlexRow`, `FlexColumn`, `AnchorLayout`
 
-### `theme/`
-Visual design rules.
-- `tokens.py`: raw design tokens
-- `defaults.py`: default theme definitions
-- `runtime.py`: active theme object and theme access
+### `camera/`
+`Camera` — world/screen conversion, smooth follow, screen shake, zoom, world bounds clamping, visibility culling.
 
-### `assets/`
-Asset file access and caching.
-- `asset_loader.py`: generic loading and cache entry points
-- `sprite_loader.py`: image/sprite-specific load helpers
-- `fonts.py`, `sounds.py`, `paths.py`: focused helpers by asset type
+### `tilemap/`
+`Tileset`, `TileLayer`, `Tilemap` — multi-layer tile rendering, camera culling, collision queries.
 
-### `graphics/`
-Rendering helpers.
-- `draw_utils.py`: shared draw helpers
-- `sprite_renderer.py`: sprite drawing with flip/alpha/rotation/scale
-- `surfaces.py`: surface helpers
-- `nine_slice.py`: scalable panel/image helpers (`draw_nine_slice`, `NineSlicePanel`)
+### `dialogue/`
+`DialogueScript`, `DialogueRunner`, `DialogueBox` — validated script format, pure-state-machine runner, typewriter widget.
 
-### `input/`
-Input abstraction.
-- `actions.py`: action names/constants including `CONSOLE_TOGGLE`
-- `bindings.py`: default key-to-action bindings (F1/F2/F3 for debug)
-- `input_manager.py`: current input state and action queries
+### `pathfinding/`
+`ObstacleGrid`, `Pathfinder` — A* with 4/8-dir movement, corner prevention, Tilemap integration.
+
+### `lighting/`
+`LightingSystem`, `Light` — dark overlay with radial gradient cutouts, flicker, camera-aware.
 
 ### `animation/`
-Time-based animation helpers.
-- `tween.py`: single-value animator with 30 easing functions
-- `easing.py`: all Robert Penner easing families
-- `animator.py`: `SpriteAnimation`, `AnimationPlayer`
+- `Tween` — single-value animator, 30 easing functions
+- `SpriteAnimation`, `AnimationPlayer` — frame-based sprite animation
+- `AnimationStateMachine` — condition-driven state/transition machine
+
+### `audio/`
+- `AudioManager` — music, SFX, volume, mute
+- `PositionalAudio`, `PositionalSource` — distance falloff, stereo panning
+
+### `assets/`
+`AssetLoader` — lazy cached images, spritesheets, fonts, sounds, atlas loading.
+
+### `atlas/`
+`AtlasPacker`, `SpriteAtlas` — shelf-packing, blit by name, save/load PNG+JSON.
+
+### `locale/`
+`LocaleStore` — JSON locale files, `t("key")` lookup, pluralisation, hot-swap.
 
 ### `particles/`
-Reusable particle systems.
-- `particle.py`: lightweight particle data container
-- `emitter.py`: continuous + burst emission, physics, alpha/fast render
-- `presets.py`: `explosion`, `sparkle`, `smoke`, `fire_emitter`, `trail`, `hit_effect`
+`Emitter` with 6 presets — explosion, sparkle, smoke, fire, trail, hit_effect.
 
 ### `persistence/`
-Reusable save/load infrastructure.
-- `save_manager.py`: top-level save/load orchestration
-- `storage.py`: safe file read/write, atomic writes, `.bak` backups
-- `serializers.py`: dataclass to/from dict, safe coercion helpers
-- `migrations.py`: version upgrade pipeline
-
-Accepted boundary:
-- the engine handles persistence infrastructure
-- the game handles save payload schema and game-state meaning
-
-### `state/`
-Small shared state helpers.
-- `observable.py` — reactive value wrapper with subscriber callbacks
-- `runtime_flags.py` — named boolean engine flags (`debug`, `show_fps`,
-  `show_rects`, `show_overlay`, `show_console`) with module-level singleton
+`SaveManager`, atomic file writes, dataclass serializers, migration pipeline.
 
 ### `events/`
-Pub/sub event bus for loose coupling between game systems.
-- `event_bus.py` — `EventBus` with wildcard patterns, one-shot subscriptions,
-  broken-handler isolation, module-level `bus` singleton
-- `signals.py` — typed `Signal` wrapper around a specific event
+`EventBus` — wildcard subscriptions, one-shot handlers, broken-handler isolation. Module-level `bus` singleton.
 
 ### `debug/`
-Development and inspection tools.
-- `debug_log.py`: centralised log with level/tag filtering
-- `overlay.py`: `DebugOverlay` — FPS, scene info, active flags (F1, `show_overlay`)
-- `console.py`: `DebugConsole` — on-screen log tail (F3, `show_console`)
-- `inspector.py`: `Inspector` — scene/widget tree dump to debug log (F2)
+`DebugOverlay` (F1), `DebugConsole` (F3), `Inspector` (F2), `debug_log`, `crash_log`.
+
+### `state/`
+`Observable[T]`, `RuntimeFlags` — named boolean engine flags.
+
+### `theme/`
+Design tokens, `Theme` dataclass, `get_theme()`/`set_theme()`.
+
+### `graphics/`
+Draw helpers, nine-slice panels, sprite renderer, surface utilities.
+
+### `input/`
+`InputManager` — per-frame press/held/released, action queries, mouse, wheel.
 
 ### `utils/`
-Truly generic, low-level helpers only.
-- `colors.py`: `lerp_color`, `brighten`, `hex_to_rgb`, `hsv_to_rgb`
-- `mathx.py`: `clamp`, `lerp`, `remap`, `smoothstep`, `angle_to_vec`, `approach`
-- `rects.py`: `inset`, `snap_to_grid`, `clamp_inside`, `split_horizontal`
-- `timers.py`: `Timer`, `Cooldown`
-
----
-
-## Persistence Boundary
-
-The engine handles persistence infrastructure; games own the schema.
-
-### Engine responsibilities
-- save slot organisation
-- file path resolution
-- safe read/write behavior
-- metadata structure, version fields
-- migration hooks/infrastructure
-- generic serializer helpers
-- corruption detection support
-
-### Game responsibilities
-- what data gets saved
-- the meaning of the save schema
-- reconstruction of game state
-- project-specific validation and migration logic
-
----
-
-## Architectural Rules
-
-1. **Keep framework code generic.** If a module only makes sense for one future game, it does not belong in `pygame_engine`.
-2. **Favor composition.** Build larger UI pieces from smaller widgets and containers instead of deep inheritance trees.
-3. **Separate concerns.** Scenes → flow. Widgets → local UI. Layout → positioning. Graphics → drawing. Assets → loading. Persistence → save/load. State → small shared runtime state.
-4. **Keep modules narrowly scoped.** Avoid turning broad names into junk drawers.
-5. **Expose a clean public API.** Top-level imports should feel intentional and stable.
-6. **Keep pygame visible.** Reduce boilerplate without completely obscuring how pygame works.
-7. **No feature is complete until code, tests, examples, and docs all agree.**
+`mathx`, `colors`, `rects`, `timers` — small generic helpers.
 
 ---
 
 ## Current Implementation Status
 
-All planned systems are implemented. See `roadmap.md` for the complete inventory.
+All planned phases complete. 1033+ tests across 38 files.
 
-Key milestones reached:
-- Full runtime spine: Application, Scene, SceneManager, SceneStack, transitions
-- Complete UI toolkit: 12 widget types with focus traversal and overlay render pass
-- Animation: Tween (30 easings), SpriteAnimation, AnimationPlayer
-- Assets, Audio, Persistence (with migrations), Particles, EventBus
-- Debug tools: overlay, console, inspector, debug log (all flag-gated)
-- Game template: immediately runnable skeleton with working settings scene
+- Phases 1–8: Runtime, UI, layout, theme, assets, audio, animation, particles, persistence, debug, EventBus, transitions, game template
+- Phase 9: Camera, Tilemap, Dialogue, Slider/Checkbox/RadioGroup
+- Phase 10: Screen manager (on_resize, set_resolution, set_fullscreen), Responsive layout, Sprite atlas, Localisation, Crash logging
+- Phase 11: Pathfinding (A*), Animation state machine, Positional audio, 2D lighting
 
 ---
 
-## Decision Log Relationship
+## Architectural Rules
 
-- `accepted_decisions.md` — current concise rule set
-- `decision_log.md` — historical architecture choices
-- Individual system docs — detailed behavior and contract notes
+1. Keep framework code generic — no game-specific logic.
+2. Favour composition over deep inheritance.
+3. Separate concerns: scenes → flow, widgets → UI, layout → positioning.
+4. Expose a clean public API — top-level imports feel intentional.
+5. Keep pygame visible — reduce boilerplate, don't hide the library.
+6. No feature is complete until code, tests, examples, and docs all agree.
