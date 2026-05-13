@@ -1,6 +1,4 @@
 """
-Panel container widget for pygame_engine.
-
 Panel is the standard building block for grouping widgets. It draws a
 styled background and border from the active theme, owns a flat list of
 child widgets, and delegates the three frame methods to them.
@@ -136,10 +134,29 @@ class Panel(Widget, FocusManager):
         Stops as soon as a child consumes the event.
         Tab/Shift+Tab are intercepted for focus traversal when
         ``manage_focus=True``.
+
+        Open Dropdowns receive mouse events before any other child,
+        regardless of Z-order, because their floating list renders
+        outside their own rect via overlay_render.
         """
         # Focus traversal intercept
         if self._focus_handle_event(event, self._children):
             return True
+
+        # Give open Dropdowns priority over all other children.
+        # Their floating list is rendered outside their own rect so
+        # normal Z-order routing would miss clicks on the open list.
+        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP,
+                          pygame.MOUSEMOTION):
+            from pygame_engine.ui.controls.dropdown import Dropdown
+            for child in self._children:
+                if (isinstance(child, Dropdown)
+                        and child.visible
+                        and child.enabled
+                        and child.is_open):
+                    if child.handle_event(event):
+                        return True
+
         for child in reversed(self._children):
             if child.handle_event(event):
                 return True

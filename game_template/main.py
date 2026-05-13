@@ -18,7 +18,9 @@ Steps to customise:
 from pathlib import Path
 
 from pygame_engine.app import Application, AppConfig
+from pygame_engine.debug.crash_log import crash_guard
 
+from game.locale import load_locales
 from game.scenes.main_menu import MainMenuScene
 
 
@@ -35,9 +37,11 @@ def _build_config() -> AppConfig:
 
 
 def main() -> None:
+    load_locales()   # load all locale files before the first frame
     config = _build_config()
     app    = Application(config)
-    app.run(MainMenuScene(app))
+    with crash_guard(Path("crash.log")):
+        app.run(MainMenuScene(app))
 
 
 if __name__ == "__main__":

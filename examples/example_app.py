@@ -1,6 +1,4 @@
 """
-examples/example_app.py
-
 Minimal end-to-end spine example.
 
 Proves that the full chain works and demonstrates core systems:
@@ -82,7 +80,7 @@ class AnimatedBlock(Widget):
 
         theme  = get_theme()
         pulse  = 0.65 + 0.35 * abs(math.sin(self._t * 1.8))
-        colour = tuple(int(c * pulse) for c in theme.colours.bg_overlay)
+        colour = tuple(int(c * pulse) for c in theme.colours.bg_raised)
 
         pygame.draw.rect(surface, colour, self.rect, border_radius=10)
         pygame.draw.rect(surface, theme.colours.border, self.rect,

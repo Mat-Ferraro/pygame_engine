@@ -330,6 +330,9 @@ class Application:
         """
         Toggle fullscreen mode at runtime.
 
+        Recreates the display surface, notifies the active scene via
+        ``on_resize()``, and fires ``window.fullscreen_changed`` on the bus.
+
         Args:
             fullscreen: True to enter fullscreen, False for windowed.
         """
@@ -343,9 +346,12 @@ class Application:
             (w, h), flags,
             vsync=1 if self._config.vsync else 0,
         )
+        # Read actual size after mode change (may differ in fullscreen)
+        nw, nh = self._display_surface.get_size()
         if self._scene_manager is not None:
-            self._scene_manager.notify_resize(w, h)
+            self._scene_manager.notify_resize(nw, nh)
         _event_bus.emit("window.fullscreen_changed", fullscreen=fullscreen)
+        _event_bus.emit("window.resized", width=nw, height=nh)
 
     def toggle_fullscreen(self) -> None:
         """Toggle fullscreen on/off."""

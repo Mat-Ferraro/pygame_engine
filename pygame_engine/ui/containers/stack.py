@@ -1,6 +1,4 @@
 """
-ui/containers/stack.py
-
 Transparent stack container for pygame_engine.
 
 Stack is the lightweight grouping container:
@@ -102,6 +100,19 @@ class Stack(Widget, FocusManager):
         # Focus traversal intercept
         if self._focus_handle_event(event, self._children):
             return True
+
+        # Give open Dropdowns priority — their floating list renders
+        # outside their own rect so normal Z-order routing misses it.
+        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP,
+                          pygame.MOUSEMOTION):
+            from pygame_engine.ui.controls.dropdown import Dropdown
+            for child in self._children:
+                if (isinstance(child, Dropdown)
+                        and child.visible
+                        and child.enabled
+                        and child.is_open):
+                    if child.handle_event(event):
+                        return True
 
         for child in reversed(self._children):
             if child.handle_event(event):

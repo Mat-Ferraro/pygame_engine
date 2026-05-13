@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Defines the planned development path for `pygame_engine` and keeps
-development intentional, preventing random feature drift.
+Defines the development path for `pygame_engine` and keeps development
+intentional, preventing random feature drift.
 
 ---
 
-## Current Status
+## Current Status — v1.0 Complete, Phase 9 Complete, Phase 10 Planned
 
 | Phase | Status | Summary |
 |-------|--------|---------|
@@ -17,169 +17,157 @@ development intentional, preventing random feature drift.
 | Phase 4 — Graphics, Animation    | ✅ Complete | Tween, easing, SpriteAnimation, AnimationPlayer, draw helpers |
 | Phase 5 — Assets, Audio          | ✅ Complete | AssetLoader, AudioManager, font/image/sound caching |
 | Phase 6 — Public API Cleanup     | ✅ Complete | README, using guide, import audit, example polish |
-| Phase 7 — Stability & Expansion  | ✅ Complete | See below |
-| Phase 8 — Game Template & Polish | 🔲 In progress | See below |
+| Phase 7 — Stability & Expansion  | ✅ Complete | Debug tools, persistence, state, extended UI, transitions |
+| Phase 8 — Game Template & Polish | ✅ Complete | Template, EventBus, particles, nine-slice, focus, Dropdown |
+| Phase 9 — Game Systems           | ✅ Complete | Slider, Checkbox, RadioGroup, Camera, Tilemap, Dialogue |
+| Phase 10 — Polish & Utilities    | ✅ Complete | Screen manager, responsive layout, sprite atlas, localisation |
+| Phase 11 — Game AI & Systems     | ✅ Complete | Pathfinding, animation state machine, positional audio, 2D lighting |
 
 ---
 
-## Phase 1 — Runtime Foundations ✅
+## Phase 9 — Game Systems ✅ Complete
 
-- `Application`, `AppConfig`
-- `Scene`, `SceneManager`, `SceneStack`
-- Base `Widget`
-- Main loop, delta-time, event routing, lifecycle hooks
+### Phase 9a — Widget Expansion ✅ Complete
 
----
+| Item | Status | Notes |
+|------|--------|-------|
+| `Slider` | ✅ Done | Track + thumb, value range, keyboard support, vertical mode |
+| `Checkbox` | ✅ Done | Checked state, label, `on_change`, keyboard activation |
+| `RadioGroup` | ✅ Done | Mutually exclusive options, keyboard navigation |
+| `app.screen_rect` | ✅ Done | `pygame.Rect(0, 0, config.width, config.height)` property |
 
-## Phase 2 — Layout, Theme, Input ✅
+### Phase 9b — Camera ✅ Complete
 
-- `row`, `column`, `grid`, `anchor` layout helpers
-- Theme system: tokens → defaults → runtime, swappable at any time
-- `InputManager`, `actions`, `DEFAULT_BINDINGS`
+| Item | Status | Notes |
+|------|--------|-------|
+| `Camera` class | ✅ Done | World offset, zoom, `world_to_screen()`, `screen_to_world()` |
+| Smooth follow | ✅ Done | `follow(target, speed)` with exponential-decay lerp |
+| Screen shake | ✅ Done | Trauma-based shake with configurable decay |
+| World bounds | ✅ Done | `set_world_bounds()` clamps camera to world rect |
+| Visibility culling | ✅ Done | `is_visible(rect, margin)` for entity culling |
 
----
+### Phase 9c — Tilemap ✅ Complete
 
-## Phase 3 — Core UI Toolkit ✅
+| Item | Status | Notes |
+|------|--------|-------|
+| `Tileset` class | ✅ Done | `from_surface()`, `from_file()`, margin/spacing support |
+| `TileLayer` class | ✅ Done | Named 2D grid, get/set/fill, ragged-row validation |
+| `Tilemap` class | ✅ Done | Multi-layer, world offset, pixel/tile coordinate conversion |
+| Layer rendering | ✅ Done | Camera-culled with zoom; per-layer visibility toggle |
+| Collision map | ✅ Done | `collides_rect()`, `get_colliding_tiles()`, `get_tile_at_world()` |
+| Tiled `.tmx` support | ⬜ Optional | Requires `pytmx`; deferred until a real game needs it |
 
-- `Panel`, `Stack` containers
-- `Button`, `Label`, `TextBlock`
-- `Toast`, `Tooltip` feedback widgets
+### Phase 9d — Dialogue ✅ Complete
 
----
-
-## Phase 4 — Graphics and Animation ✅
-
-- `Tween` with 30 easing functions (all Robert Penner families)
-- `SpriteAnimation`, `AnimationPlayer` — frame-based sprite animation
-- `draw_utils` — `draw_surface_style`, `draw_rect_bordered`, chevrons, lines
-- `surfaces` — `make_alpha_surface`, `blit_alpha`, scale, crop
-- `sprite_renderer` — `draw_sprite`, `draw_animation_frame`
-
----
-
-## Phase 5 — Assets and Audio ✅
-
-- `AssetLoader` — image, spritesheet, font, sound loading with lazy caching
-- `PathResolver` — centralised path resolution with folder conventions
-- `AudioManager` — music streaming, SFX channels, volume controls, mute
-- Placeholder surfaces for missing images in debug mode
-
----
-
-## Phase 6 — Public API Cleanup ✅
-
-- `README.md` — complete rewrite with quick-start, import reference
-- `using_pygame_engine.md` — practical guide for building games
-- Public import audit — all `__init__.py` files complete and consistent
-- `example_app.py` — updated to showcase Tween, easing, theme, input
+| Item | Status | Notes |
+|------|--------|-------|
+| `DialogueScript` | ✅ Done | Validated JSON-compatible dict format; branching, actions, choices |
+| `DialogueRunner` | ✅ Done | Pure state machine; advance/select_choice/jump; callbacks |
+| `DialogueBox` widget | ✅ Done | Speaker bar, typewriter effect, choice buttons, keyboard shortcuts |
+| `DialogueScene` | ⬜ Optional | Could wrap box+runner in a scene overlay; defer until needed |
 
 ---
 
-## Phase 7 — Stability and Expansion ✅
+## Phase 10 — Polish & Utilities 🔄 Planned
 
-All planned Phase 7 items have been completed.
+These items were deferred from earlier phases and are now queued for
+implementation. Each is scoped and ready to build.
 
-### Completed in this phase
+### Phase 10a — Screen Manager ✅ Complete
 
-**Debug tools**
-- `debug_log` — centralised log with level/tag filtering, capped history
-- `RuntimeFlags` — named boolean flags (`debug`, `show_fps`, `show_rects`, `show_overlay`)
-- `DebugOverlay` — FPS/frametime, scene name, stack depth, active flags
-- `DebugConsole` — on-screen log tail (bottom of screen)
-- `Inspector` — scene stack and widget tree dump to debug log
-- F1 toggles overlay, F2 dumps inspector
+Completes the "layout per scene size" work started with `app.screen_rect`.
 
-**Extended UI widgets**
-- `Dropdown` — *(in progress, Phase 8)*
-- `ProgressBar` — horizontal/vertical fill bar, value clamped to [0,1]
-- `Scrollable` — clipping viewport with mouse-wheel scroll, scrollbar thumb
-- `InputField` — single-line text entry, cursor, placeholder, password mode
-- `Stack` — fixed: now properly follows base Widget contract
-- `TextBlock` — multi-line wrapped text with caching
+| Item | Status | Notes |
+|------|--------|-------|
+| `app.screen_rect` property | ✅ Done | Returns `Rect(0, 0, config.width, config.height)`; reflects post-resize size |
+| Resize event signal | ✅ Done | `bus.emit("window.resized", width, height)` fired from `Application._on_resize` |
+| `SceneManager` resize notification | ✅ Done | `notify_resize(w, h)` calls `on_resize` on top-of-stack scene only |
+| Layout rebuild hook | ✅ Done | `Scene.on_resize(width, height)` — override to rebuild layout rects |
 
-**Scene transitions**
-- `FadeTransition` — fade through a solid colour (two-phase)
-- `SlideTransition` — slide in from any edge (left/right/up/down)
-- `CrossfadeTransition` — dissolve between scenes
-- `SceneManager` extended with `push_with`, `replace_with`, `pop_with`
+### Phase 10b — Responsive Layout ✅ Complete
 
-**Animation**
-- `SpriteAnimation` — immutable frame data with uniform/per-frame durations
-- `AnimationPlayer` — named animation registry, loop, ping-pong, on_finish
+A lightweight anchor+flex hybrid — stateful helpers that recompute on resize.
 
-**Input**
-- `InputField` provides text input mode via pygame TEXTINPUT events
+| Item | Status | Notes |
+|------|--------|-------|
+| `FlexRow` | ✅ Done | Horizontal distribution with weights, fixed sizes, min/max, spacing, padding |
+| `FlexColumn` | ✅ Done | Vertical distribution with the same options as FlexRow |
+| `AnchorLayout` | ✅ Done | Pin widgets to screen edges; `apply(bounds)` in `on_resize()` |
+| Integration with Screen Manager | ✅ Done | All three classes designed to be called from `Scene.on_resize()` |
 
-**Persistence**
-- `storage.py` — atomic writes, `.bak` backups, corrupt save detection
-- `serializers.py` — dataclass to/from dict, safe type coercion helpers
-- `migrations.py` — version pipeline with decorator-based handler registration
-- `SaveManager` — slot management, game_id validation, envelope wrapping
+### Phase 10c — Sprite Atlas ✅ Complete
 
-**State**
-- `Observable[T]` — reactive value wrapper with subscribe/unsubscribe
-- `RuntimeFlags` — named engine boolean flags with module-level singleton
+Pre-bake many small images into one surface to reduce blit overhead.
 
-**Cleanup**
-- Removed `events/` package (empty stubs, `Observable` covers the need)
-- Removed `state/state_store.py` (no concrete use case, dumping-ground risk)
-- 330+ passing tests across 19 test files
+| Item | Status | Notes |
+|------|--------|-------|
+| `SpriteAtlas` class | ✅ Done | `blit()`, `get_rect()`, `get_surface()`, `has()`, `from_surfaces()`, `load()` |
+| `AtlasPacker` | ✅ Done | Shelf-packing algorithm; `add()`, `build()`, `save()` with JSON metadata |
+| `AssetLoader` integration | ✅ Done | `app.assets.atlas(image_path, meta_path)` loads a pre-built atlas |
 
----
+### Phase 10d — Localisation ✅ Complete
 
-## Phase 8 — Game Template and Polish 🔲 In progress
+String key → translated string lookup. Engine-agnostic.
 
-### Completed
-
-- **Game project template** (`game_template/`) — immediately runnable skeleton:
-  - `main.py` — fully wired entry point with config, bindings, theme hooks
-  - `game/actions.py` — engine + game-specific action constants
-  - `game/scenes/main_menu.py` — working main menu with transitions
-  - `game/scenes/game_scene.py` — stub gameplay scene ready to fill in
-  - `game/scenes/pause_scene.py` — pause overlay with correct blocking policy
-  - `game/scenes/settings_scene.py` — settings overlay with back navigation
-  - `game/models/`, `game/systems/`, `game/ui/` — documented stub packages
-  - `README.md` — comprehensive "how to use this template" guide
-
-### Remaining
-
-**`Dropdown` widget** — the last planned UI control. Settings screens and
-option selectors need it. Complex (floating list, z-ordering, click-outside
-to close) but well-defined.
-
-**Nine-slice rendering** — `graphics/nine_slice.py` stub. Needed for scalable
-dialog boxes and speech bubbles without distortion. Straightforward to
-implement once Dropdown is done.
-
-**Focus traversal** — Tab key navigation between widgets. The `focused` flag
-exists on every widget. Container-level traversal logic needs implementing.
-Important for keyboard-navigable settings and forms.
-
-**Particle system** — `particles/` (emitter, particle, presets) are all empty
-stubs. Every game wants hit effects, explosions, weather. Deferred until a
-real game pulls on it.
-
-**EventBus** — ✅ now implemented. See `docs/event_model.md`.
-`Signal` typed wrapper also available in `events/signals.py`.
+| Item | Status | Notes |
+|------|--------|-------|
+| `LocaleStore` | ✅ Done | `load_file()`, `load_dict()`, `t("key")` with fallback chain |
+| Pluralisation | ✅ Done | `t("key", count=n)` — zero/one/other forms |
+| Format substitution | ✅ Done | `t("hud.score", value=42)` → `"Score: 42"` |
+| Locale switching | ✅ Done | `set_locale("fr")` hot-swaps; falls back to fallback locale |
+| Nested key flattening | ✅ Done | `{"menu": {"start": "Go"}}` → `"menu.start"` |
+| Game template integration | ✅ Done | `game/locale/en.json` + `game/locale/__init__.py` with `t()` shortcut |
 
 ---
 
-## Out of Scope — Physics
+## Phase 11 — Game AI & Systems ✅ Complete
 
-`pygame_engine` will not include a physics engine.
+### Phase 11a — Pathfinding ✅ Complete
 
-Physics is deep, specialised, and genre-specific. A platformer, top-down
-RPG, and billiards game each need fundamentally different physics behaviour.
+| Item | Status | Notes |
+|------|--------|-------|
+| `ObstacleGrid` | ✅ Done | 2D boolean grid; `from_tilemap()` factory; `set_obstacle()`, `fill()` |
+| `Pathfinder` | ✅ Done | A* with 4-dir and 8-dir (diagonal) movement; corner-cutting prevention |
 
-**Recommended approach:** Use **pymunk** (the standard pygame physics library,
-wrapping Chipmunk) as a direct game-project dependency, not an engine one.
+### Phase 11b — Animation State Machine ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `AnimationStateMachine` | ✅ Done | States, transitions, conditions, priority, any-state, on_enter/on_exit callbacks |
+
+### Phase 11c — 2D Positional Audio ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `PositionalAudio` | ✅ Done | Distance falloff, stereo panning, configurable rolloff |
+| `PositionalSource` | ✅ Done | Looping positioned sources with per-frame update |
+
+### Phase 11d — 2D Lighting ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `Light` | ✅ Done | World-position light with radius, colour, intensity, flicker |
+| `LightingSystem` | ✅ Done | Dark overlay with radial gradient cutouts; camera-aware |
 
 ---
 
-## Ongoing rules
+## Deliberately Skipped
 
-- Keep framework code generic — no game-specific logic in the engine
-- Keep docs updated when contracts or decisions change
-- Add tests for all reusable deterministic logic
-- Prefer small, stable contracts over rapid abstraction growth
-- Only expand when a real game use case pulls on it
+These were evaluated and will not be built into the engine.
+
+| Item | Decision | Reason |
+|------|----------|--------|
+| Built-in physics | Skip | Out of scope by accepted decision. Use pymunk as a game-level dependency. |
+| Networking / multiplayer | Skip | Highly game-specific; enormous scope. |
+| Scripting VM / Lua | Skip | Would double engine complexity for marginal benefit at this scale. |
+
+---
+
+## Guiding Rules
+
+1. Build what every game needs, not what some games need.
+2. No feature is complete until code, tests, examples, and docs all agree.
+3. Game-specific concerns stay in game projects.
+4. If the same pattern appears across multiple real games, only then move it into the engine.
+5. Keep the public API understandable. New systems get their own package.
+6. Physics, networking, and scripting stay out of scope.
