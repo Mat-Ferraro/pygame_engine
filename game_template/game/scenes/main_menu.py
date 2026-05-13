@@ -1,6 +1,4 @@
 """
-game/scenes/main_menu.py
-
 The first scene the player sees. Provides Start, Settings, and Quit.
 """
 
@@ -67,7 +65,7 @@ class MainMenuScene(Scene):
         # ── Version label ─────────────────────────────────────────────────────
         version = Label(
             anchor(screen, (200, 24), "bottom_right", margin=12),
-            "v1.1.0",
+            "v1.3.0",
             font_size=theme.typography.xs,
             colour=theme.colours.text_secondary,
             align="right",

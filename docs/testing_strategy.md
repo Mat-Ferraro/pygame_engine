@@ -1,6 +1,3 @@
-Testing supports confidence in reusable engine behaviour without turning
-the project into a test-only exercise.
-
 ---
 
 ## Test Location
@@ -65,7 +62,7 @@ returns an 800×600 surface for render smoke tests.
 
 ---
 
-## Current Suite — 1033+ tests across 42 files
+## Current Suite — 1083+ tests across 42 files
 
 | File | Covers |
 |---|---|

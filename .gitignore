@@ -1,15 +1,3 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
-*.so
-
 # Virtual environments
 .venv/
 venv/
@@ -36,3 +24,15 @@ Thumbs.db
 *.spec
 Release/
 Debug/
+
+# Python packaging (auto-generated — do not commit)
+*.egg-info/
+dist/
+build/
+__pycache__/
+*.pyc
+
+# Runtime artifacts from examples (do not commit)
+saves_example/
+crash.log
+*.bak
