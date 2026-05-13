@@ -1,9 +1,7 @@
 """
-Main menu scene.
+game/scenes/main_menu.py
 
 The first scene the player sees. Provides Start, Settings, and Quit.
-Replace placeholder callbacks with real scene transitions as your game
-grows.
 """
 
 from __future__ import annotations
@@ -12,12 +10,12 @@ import pygame
 
 from pygame_engine.app import Application
 from pygame_engine.layout import anchor, column
-from pygame_engine.scene import Scene
-from pygame_engine.scene import FadeTransition, SlideTransition
+from pygame_engine.scene import Scene, FadeTransition, SlideTransition
 from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui import Button, Label, Panel, Stack
 
 from game import actions
+from game.locale import t
 
 
 class MainMenuScene(Scene):
@@ -26,9 +24,9 @@ class MainMenuScene(Scene):
 
     Demonstrates:
     - Panel + column layout for button groups
-    - Stack as a transparent root container
+    - Localisation via t() for all user-visible strings
     - Scene transitions on navigation
-    - Action-based ESC handling
+    - Version label from engine
     """
 
     def __init__(self, app: Application) -> None:
@@ -36,15 +34,17 @@ class MainMenuScene(Scene):
         self._app = app
 
     def on_enter(self) -> None:
-        screen = pygame.Rect(0, 0,
-                             self._app.config.width,
-                             self._app.config.height)
-        theme  = get_theme()
+        self._build_ui(self._app.screen_rect)
+
+    def on_resize(self, width: int, height: int) -> None:
+        self._build_ui(pygame.Rect(0, 0, width, height))
+
+    def _build_ui(self, screen: pygame.Rect) -> None:
+        theme = get_theme()
 
         # ── Title ─────────────────────────────────────────────────────────────
-        title_rect = anchor(screen, (500, 60), "top", margin=80)
         title = Label(
-            title_rect,
+            anchor(screen, (500, 60), "top", margin=80),
             self._app.config.title,
             font_size=theme.typography.xxl,
             colour=theme.colours.text,
@@ -53,35 +53,26 @@ class MainMenuScene(Scene):
 
         # ── Button panel ──────────────────────────────────────────────────────
         panel_rect = anchor(screen, (280, 240), "center", offset=(0, 30))
-        panel = Panel(panel_rect)
+        panel      = Panel(panel_rect)
 
         btn_rects = column(
             panel_rect, count=3,
             item_size=(200, 52), spacing=14,
             padding=theme.spacing.xl,
         )
-
-        btn_start    = Button(btn_rects[0], "Start Game",
-                              on_click=self._on_start)
-        btn_settings = Button(btn_rects[1], "Settings",
-                              on_click=self._on_settings)
-        btn_quit     = Button(btn_rects[2], "Quit",
-                              on_click=self._app.stop)
-
-        panel.add(btn_start)
-        panel.add(btn_settings)
-        panel.add(btn_quit)
+        panel.add(Button(btn_rects[0], t("menu.start"),    on_click=self._on_start))
+        panel.add(Button(btn_rects[1], t("menu.settings"), on_click=self._on_settings))
+        panel.add(Button(btn_rects[2], t("menu.quit"),     on_click=self._app.stop))
 
         # ── Version label ─────────────────────────────────────────────────────
-        version_rect = anchor(screen, (200, 24), "bottom_right", margin=12)
         version = Label(
-            version_rect, "v0.1.0",
+            anchor(screen, (200, 24), "bottom_right", margin=12),
+            "v1.1.0",
             font_size=theme.typography.xs,
             colour=theme.colours.text_secondary,
             align="right",
         )
 
-        # ── Root ──────────────────────────────────────────────────────────────
         root = Stack(pygame.Rect(screen))
         root.add(panel)
         root.add(title)
@@ -92,7 +83,6 @@ class MainMenuScene(Scene):
         pass
 
     def _handle_event_scene(self, event: pygame.event.Event) -> bool:
-        # ESC on the main menu quits (or you could open a confirm dialog)
         if self._app.input_manager.was_action_pressed(actions.CANCEL):
             self._app.stop()
             return True

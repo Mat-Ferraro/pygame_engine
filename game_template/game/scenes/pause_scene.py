@@ -1,5 +1,5 @@
 """
-Pause menu scene.
+game/scenes/pause_scene.py
 
 Pushed on top of GameScene when the player pauses. Renders a
 semi-transparent overlay so the game world stays visible behind it.
@@ -11,16 +11,16 @@ import pygame
 
 from pygame_engine.app import Application
 from pygame_engine.layout import anchor, column
-from pygame_engine.scene import Scene
-from pygame_engine.scene import FadeTransition, SlideTransition
+from pygame_engine.scene import Scene, FadeTransition, SlideTransition
 from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui import Button, Label, Panel, Stack
 
 from game import actions
+from game.locale import t
 
 
 class PauseScene(Scene):
-    """Pause menu — resumes, goes to settings, or quits to main menu."""
+    """Pause menu — resume, settings, or quit to main menu."""
 
     blocks_input_below  = True
     blocks_update_below = True
@@ -31,33 +31,33 @@ class PauseScene(Scene):
         self._app = app
 
     def on_enter(self) -> None:
-        screen = pygame.Rect(0, 0,
-                             self._app.config.width,
-                             self._app.config.height)
-        theme  = get_theme()
+        self._build_ui(self._app.screen_rect)
+
+    def on_resize(self, width: int, height: int) -> None:
+        self._build_ui(pygame.Rect(0, 0, width, height))
+
+    def _build_ui(self, screen: pygame.Rect) -> None:
+        theme = get_theme()
 
         panel_rect = anchor(screen, (280, 280), "center")
-        panel = Panel(panel_rect)
+        panel      = Panel(panel_rect)
 
-        title_rect = pygame.Rect(panel_rect.x, panel_rect.y - 52,
-                                 panel_rect.width, 40)
-        title = Label(title_rect, "Paused",
-                      font_size=theme.typography.xl,
-                      colour=theme.colours.text,
-                      align="center")
+        title = Label(
+            pygame.Rect(panel_rect.x, panel_rect.y - 52, panel_rect.width, 40),
+            t("pause.title"),
+            font_size=theme.typography.xl,
+            colour=theme.colours.text,
+            align="center",
+        )
 
         btn_rects = column(
             panel_rect, count=3,
             item_size=(200, 48), spacing=12,
             padding=theme.spacing.xl,
         )
-
-        panel.add(Button(btn_rects[0], "Resume",
-                         on_click=self._resume))
-        panel.add(Button(btn_rects[1], "Settings",
-                         on_click=self._settings))
-        panel.add(Button(btn_rects[2], "Quit to Menu",
-                         on_click=self._quit_to_menu))
+        panel.add(Button(btn_rects[0], t("pause.resume"),   on_click=self._resume))
+        panel.add(Button(btn_rects[1], t("pause.settings"), on_click=self._settings))
+        panel.add(Button(btn_rects[2], t("pause.quit"),     on_click=self._quit_to_menu))
 
         root = Stack(pygame.Rect(screen))
         root.add(panel)
@@ -65,10 +65,8 @@ class PauseScene(Scene):
         self.root_widget = root
 
     def _handle_event_scene(self, event: pygame.event.Event) -> bool:
-        if self._app.input_manager.was_action_pressed(actions.PAUSE):
-            self._resume()
-            return True
-        if self._app.input_manager.was_action_pressed(actions.CANCEL):
+        inp = self._app.input_manager
+        if inp.was_action_pressed(actions.PAUSE) or inp.was_action_pressed(actions.CANCEL):
             self._resume()
             return True
         return False
@@ -94,4 +92,3 @@ class PauseScene(Scene):
     def _quit_to_menu(self) -> None:
         from game.scenes.main_menu import MainMenuScene
         self._app.scene_manager.clear_and_push(MainMenuScene(self._app))
-        # Note: no transition here since we clear the whole stack

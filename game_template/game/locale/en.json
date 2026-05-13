@@ -4,24 +4,30 @@
     "menu.settings":  "Settings",
     "menu.quit":      "Quit",
 
-    "settings.title":   "Settings",
-    "settings.quality": "Quality",
-    "settings.volume":  "Volume",
-    "settings.back":    "Back",
-
     "pause.title":    "Paused",
     "pause.resume":   "Resume",
     "pause.settings": "Settings",
     "pause.quit":     "Quit to Menu",
 
+    "settings.title":   "Settings",
+    "settings.quality": "Quality",
+    "settings.volume":  "Volume",
+    "settings.display": "Display",
+    "settings.fullscreen": "Fullscreen",
+    "settings.show_fps":   "Show FPS",
+    "settings.back":    "Back",
+
     "hud.score": "Score: {value}",
     "hud.level": "Level {level}",
+    "hud.lives": "{count} lives",
+    "hud.health": "HP: {current}/{max}",
 
     "item.coin": {
         "one":   "1 coin",
         "other": "{count} coins"
     },
     "item.life": {
+        "zero":  "No lives",
         "one":   "1 life",
         "other": "{count} lives"
     }

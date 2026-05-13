@@ -2,6 +2,13 @@
 game/scenes/settings_scene.py
 
 Settings scene — pushed on top of the main menu or pause menu.
+
+Demonstrates:
+- Slider for volume control
+- Dropdown for quality selection with overlay_render()
+- Checkbox for boolean toggles (fullscreen state synced with display)
+- on_resize() rebuilding layout when window size changes
+- Localisation via t()
 """
 
 from __future__ import annotations
@@ -17,6 +24,7 @@ from pygame_engine.ui.controls.checkbox import Checkbox
 from pygame_engine.ui.controls.slider import Slider
 
 from game import actions
+from game.locale import t
 
 
 class SettingsScene(Scene):
@@ -28,16 +36,15 @@ class SettingsScene(Scene):
 
     def __init__(self, app: Application) -> None:
         super().__init__()
-        self._app                  = app
+        self._app              = app
         self._quality_dropdown: Dropdown | None = None
         self._vol_slider:       Slider   | None = None
-        self._fullscreen_cb:    Checkbox | None = None   # keep reference to sync state
+        self._fullscreen_cb:    Checkbox | None = None
 
     def on_enter(self) -> None:
         self._build_ui(self._app.screen_rect)
 
     def on_resize(self, width: int, height: int) -> None:
-        # Rebuild UI at new size, preserving current fullscreen state
         self._build_ui(pygame.Rect(0, 0, width, height))
 
     def on_exit(self) -> None:
@@ -53,7 +60,7 @@ class SettingsScene(Scene):
 
         title = Label(
             pygame.Rect(panel_rect.x, panel_rect.y - 52, panel_rect.width, 40),
-            "Settings",
+            t("settings.title"),
             font_size=theme.typography.xl,
             colour=theme.colours.text,
             align="center",
@@ -65,18 +72,18 @@ class SettingsScene(Scene):
             padding=theme.spacing.xl,
         )
 
-        def row_label(row: int, text: str) -> Label:
+        def row_label(row: int, key: str) -> Label:
             return Label(
-                pygame.Rect(rows[row].x, rows[row].y, 120, rows[row].height),
-                text,
+                pygame.Rect(rows[row].x, rows[row].y, 130, rows[row].height),
+                t(key),
                 font_size=theme.typography.sm,
                 colour=theme.colours.text_secondary,
             )
 
         # ── Row 0: Quality ────────────────────────────────────────────────────
-        panel.add(row_label(0, "Quality"))
+        panel.add(row_label(0, "settings.quality"))
         self._quality_dropdown = Dropdown(
-            pygame.Rect(rows[0].x + 130, rows[0].y, rows[0].width - 130, rows[0].height),
+            pygame.Rect(rows[0].x + 140, rows[0].y, rows[0].width - 140, rows[0].height),
             options=["Low", "Medium", "High", "Ultra"],
             selected_index=2,
             on_change=self._on_quality_change,
@@ -84,39 +91,34 @@ class SettingsScene(Scene):
         panel.add(self._quality_dropdown)
 
         # ── Row 1: Volume ─────────────────────────────────────────────────────
-        panel.add(row_label(1, "Volume"))
+        panel.add(row_label(1, "settings.volume"))
         self._vol_slider = Slider(
-            pygame.Rect(rows[1].x + 130, rows[1].y + 10, rows[1].width - 130, 24),
+            pygame.Rect(rows[1].x + 140, rows[1].y + 10, rows[1].width - 140, 24),
             value=self._app.audio.master_volume,
             on_change=lambda v: setattr(self._app.audio, "master_volume", v),
         )
         panel.add(self._vol_slider)
 
         # ── Row 2: Fullscreen ─────────────────────────────────────────────────
-        panel.add(row_label(2, "Display"))
-
-        # Read the ACTUAL current fullscreen state from pygame so the checkbox
-        # always reflects reality (e.g. after on_resize rebuilds the UI).
-        is_fullscreen = self._is_fullscreen()
-
+        panel.add(row_label(2, "settings.display"))
         self._fullscreen_cb = Checkbox(
-            pygame.Rect(rows[2].x + 130, rows[2].y, 200, rows[2].height),
-            label="Fullscreen",
-            checked=is_fullscreen,
+            pygame.Rect(rows[2].x + 140, rows[2].y, 200, rows[2].height),
+            label=t("settings.fullscreen"),
+            checked=self._is_fullscreen(),      # read ACTUAL display state
             on_change=self._on_fullscreen_change,
         )
         panel.add(self._fullscreen_cb)
 
         # ── Row 3: Show FPS ───────────────────────────────────────────────────
-        panel.add(row_label(3, ""))
+        panel.add(row_label(3, "settings.display"))   # blank section label
         panel.add(Checkbox(
-            pygame.Rect(rows[3].x + 130, rows[3].y, 200, rows[3].height),
-            label="Show FPS",
+            pygame.Rect(rows[3].x + 140, rows[3].y, 200, rows[3].height),
+            label=t("settings.show_fps"),
             on_change=self._on_show_fps_change,
         ))
 
         # ── Row 4: Back ───────────────────────────────────────────────────────
-        panel.add(Button(rows[4], "Back", on_click=self._go_back))
+        panel.add(Button(rows[4], t("settings.back"), on_click=self._go_back))
 
         root = Stack(pygame.Rect(screen))
         root.add(panel)
@@ -150,9 +152,8 @@ class SettingsScene(Scene):
 
     def _on_fullscreen_change(self, value: bool) -> None:
         self._app.set_fullscreen(value)
-        # After set_fullscreen the display is recreated. on_resize fires and
-        # rebuilds the UI with a fresh checkbox that reads is_fullscreen()
-        # directly, so the visual state will always be correct.
+        # on_resize fires after set_fullscreen → _build_ui rebuilds the UI
+        # with a fresh checkbox that reads _is_fullscreen() correctly.
 
     def _on_show_fps_change(self, value: bool) -> None:
         from pygame_engine.state.runtime_flags import flags
@@ -166,7 +167,6 @@ class SettingsScene(Scene):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _is_fullscreen(self) -> bool:
-        """Return True if the display is currently in fullscreen mode."""
         surf = pygame.display.get_surface()
         if surf is None:
             return False
