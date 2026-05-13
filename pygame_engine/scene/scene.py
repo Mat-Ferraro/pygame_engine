@@ -1,6 +1,4 @@
 """
-scene/scene.py
-
 Base scene contract for pygame_engine.
 
 Scenes represent high-level application states: menus, gameplay screens,
@@ -192,13 +190,35 @@ class Scene:
         """
         Draw this scene onto the provided surface.
 
-        Default behavior: delegates to ``root_widget.render(surface)`` if
-        a root widget is present. Override to draw scene content; call
-        ``super().render(surface)`` to keep widget delegation, or skip it
-        to take full control of rendering order.
+        Default behavior:
+        1. Renders ``root_widget`` (the normal widget tree).
+        2. Calls ``overlay_render(surface)`` for floating UI (Dropdowns,
+           Tooltips) that must appear above all other widgets.
+
+        Override to take full control. Call ``super().render(surface)``
+        to keep both passes.
 
         Args:
             surface: The surface to draw onto (usually the display surface).
         """
         if self.root_widget is not None:
             self.root_widget.render(surface)
+        self.overlay_render(surface)
+
+    def overlay_render(self, surface: pygame.Surface) -> None:
+        """
+        Second render pass for floating UI elements.
+
+        Called automatically by ``render()`` after the main widget tree.
+        Override to render Dropdowns, Tooltips, or any widget that must
+        appear above everything else::
+
+            def overlay_render(self, surface):
+                self._quality_dropdown.overlay_render(surface)
+
+        Default: no-op.
+
+        Args:
+            surface: The surface to draw onto.
+        """
+        pass

@@ -1,6 +1,4 @@
 """
-game/scenes/pause_scene.py
-
 Pause menu scene.
 
 Pushed on top of GameScene when the player pauses. Renders a
@@ -14,7 +12,7 @@ import pygame
 from pygame_engine.app import Application
 from pygame_engine.layout import anchor, column
 from pygame_engine.scene import Scene
-from pygame_engine.scene.transitions import FadeTransition, SlideTransition
+from pygame_engine.scene import FadeTransition, SlideTransition
 from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui import Button, Label, Panel, Stack
 

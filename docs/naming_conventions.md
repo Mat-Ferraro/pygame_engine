@@ -58,7 +58,7 @@ Avoid: `core`, `shared_stuff`, `helpers`, `misc`.
 
 ### Responsibility-first naming
 - `asset_loader.py`, `sprite_loader.py`, `sprite_renderer.py`
-- `scene_manager.py`, `state_store.py`
+- `scene_manager.py`, `scene_stack.py`, `debug_log.py`
 
 Avoid ambiguous names when a clearer one exists:
 - prefer `draw_utils.py` over `draw.py`

@@ -1,6 +1,4 @@
 """
-game/scenes/main_menu.py
-
 Main menu scene.
 
 The first scene the player sees. Provides Start, Settings, and Quit.
@@ -15,7 +13,7 @@ import pygame
 from pygame_engine.app import Application
 from pygame_engine.layout import anchor, column
 from pygame_engine.scene import Scene
-from pygame_engine.scene.transitions import FadeTransition, SlideTransition
+from pygame_engine.scene import FadeTransition, SlideTransition
 from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui import Button, Label, Panel, Stack
 

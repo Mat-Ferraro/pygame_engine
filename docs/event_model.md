@@ -1,154 +1,158 @@
+# Event Model
+
 ## Purpose
 
-The event model defines how loosely-coupled subsystems communicate inside `pygame_engine`.
+Defines how game systems communicate in `pygame_engine` projects.
 
-The goal is to support useful signaling without creating event spaghetti.
+Two mechanisms exist for different use cases:
 
----
+| Mechanism | Use when |
+|---|---|
+| `Observable` | One value, multiple consumers, reactive UI |
+| `EventBus` | Discrete game events, loose coupling between systems |
 
-## Current Event Modules
-
-The events package currently contains:
-
-- `signals.py`
-- `event_bus.py`
-
-Suggested roles:
-- `signals.py` = signal/event definitions or lightweight signal primitives
-- `event_bus.py` = subscription and dispatch infrastructure
+Direct callbacks (`on_click`, `on_change`, `on_finish`) remain the right
+choice for tight, local coupling — widget → scene, tween → callback.
 
 ---
 
-## Design Principles
+## Observable
 
-1. Use direct calls when ownership is clear.
-2. Use events when decoupling is genuinely useful.
-3. Avoid replacing normal control flow with indiscriminate event broadcasting.
-4. Define event lifetimes and subscription ownership clearly.
+`Observable[T]` wraps a single value and notifies subscribers when it changes.
 
----
+Best for: health points, volume level, selected inventory slot, any value
+that multiple UI elements or systems need to react to.
 
-## When to Use Events
+```python
+from pygame_engine.state.observable import Observable
 
-Good use cases:
-- UI callbacks crossing subsystem boundaries
-- debug notifications
-- global runtime notifications
-- theme/input/runtime changes that multiple systems may observe
-- tool-style overlays reacting to engine state changes
-
-Poor use cases:
-- replacing ordinary method calls between tightly related objects
-- hiding simple dependencies behind generic event names
-- core scene/widget control flow where direct ownership is already obvious
+self.hp = Observable(100)
+self.hp.subscribe(lambda new, old: hud.update_hp(new))
+self.hp.value = 70   # → hud.update_hp(70) fires automatically
+```
 
 ---
 
-## Event Bus Responsibilities
+## EventBus
 
-The event bus should:
-- register subscribers
-- unregister subscribers
-- dispatch events/signals
-- remain simple and predictable
-- avoid magical global behavior where possible
+`EventBus` is a pub/sub bus for discrete game events. Publishers and
+subscribers are completely decoupled — neither knows the other exists.
 
-It should not:
-- become the universal backbone for every interaction
-- silently swallow debugging needs around subscription lifetime
-- hide ownership problems
+Accessible via the module-level singleton:
 
----
+```python
+from pygame_engine.events import bus
+```
 
-## Signal Definitions
+Or inject a fresh instance for isolated testing:
 
-`signals.py` may define:
-- named event types
-- signal classes
-- payload shape conventions
-- reusable signal channels
+```python
+from pygame_engine.events.event_bus import EventBus
+bus = EventBus()
+```
 
-Recommended rule:
-- signal naming should be explicit and descriptive
+### Subscribing
 
-Examples:
-- `THEME_CHANGED`
-- `SCENE_PUSHED`
-- `DEBUG_OVERLAY_TOGGLED`
+```python
+# Permanent subscription
+bus.on("player.damaged", on_player_damaged)
 
----
+# One-shot — auto-unsubscribes after first call
+bus.once("tutorial.first_kill", show_tip)
 
-## Subscription Ownership
+# Wildcard — matches any event starting with "player."
+bus.on("player.*", analytics.record_player_event)
+```
 
-This is one of the most important rules.
+### Emitting
 
-Whoever subscribes is responsible for unsubscribing when its lifetime ends.
+All payload values are keyword arguments:
 
-Examples:
-- scenes unsubscribe on exit
-- widgets unsubscribe on destruction/removal
-- debug overlays unsubscribe when disabled or removed
+```python
+bus.emit("player.damaged", amount=30, source="spike_trap")
+bus.emit("item.collected", item_id="sword_01", rarity="rare")
+bus.emit("scene.entered",  scene_name="dungeon_level_3")
+```
 
-Unclear subscription lifetime is one of the fastest ways to create bugs.
+### Unsubscribing
 
----
+```python
+bus.off("player.damaged", on_player_damaged)   # remove one handler
+bus.clear("player.damaged")                     # remove all handlers for event
+bus.clear_all()                                 # remove everything
+```
 
-## Payload Policy
+### Signals (optional typed wrapper)
 
-Events should carry enough information to be useful, but not arbitrary giant state blobs.
+`Signal` wraps a specific event for a cleaner API on game classes:
 
-Good payloads:
-- changed value
-- source identifier
-- scene reference if appropriate
-- small contextual data
+```python
+from pygame_engine.events.signals import Signal
+from pygame_engine.events import bus
 
-Avoid:
-- entire app state dumps
-- giant mutable objects unless truly necessary
+class Player:
+    damaged     = Signal("player.damaged",     bus)
+    died        = Signal("player.died",        bus)
+    levelled_up = Signal("player.levelled_up", bus)
 
----
+    def take_damage(self, amount: int) -> None:
+        self.hp -= amount
+        Player.damaged.emit(amount=amount)
+        if self.hp <= 0:
+            Player.died.emit()
 
-## Local vs Global Events
-
-### Local events
-Used within a scene or widget hierarchy.
-Often better handled via callbacks or direct ownership.
-
-### Global/runtime events
-Used for broader coordination across systems.
-These are better candidates for the event bus.
-
-Recommended rule:
-- default to local/direct communication first
-- escalate to bus-style communication only when appropriate
+# Subscribing via Signal
+Player.damaged.connect(hud.on_player_damaged)
+Player.died.connect(game_over_screen.show)
+```
 
 ---
 
-## Event Consumption
+## Naming conventions
 
-Events on the bus are different from input event consumption.
+Use dot-separated namespaces:
 
-Input events may be consumed in routing.
-Bus events are typically broadcasts to subscribers.
-
-Do not mix these concepts.
-
----
-
-## Rules for Future Development
-
-1. Prefer direct calls when ownership is clear.
-2. Use events for cross-cutting decoupling, not ordinary control flow.
-3. Keep subscription lifetimes explicit.
-4. Keep payloads small and clear.
-5. Document new important engine-wide events.
+```
+"player.damaged"        player took damage
+"player.died"           player died
+"player.levelled_up"    player gained a level
+"enemy.spawned"         enemy created
+"enemy.died"            enemy destroyed
+"item.collected"        player picked up item
+"scene.entered"         scene became active
+"scene.exited"          scene removed
+"save.completed"        save finished
+"audio.muted"           audio muted/unmuted
+```
 
 ---
 
-## Open Questions
+## Accepted Decisions
 
-- Should signals be string constants, dataclasses, or lightweight classes?
-- Should the event bus support priorities?
-- Should there be scene-local event buses?
-- Should event dispatch be synchronous only?
+### EventBus uses string event names, not enums or classes
+**Reason:** Strings are fast to write, readable in logs, and easily wildcard-
+matched. Enums would require all event names to be registered in one place,
+which doesn't fit a multi-system game architecture.
+
+### All payload values are keyword arguments
+**Reason:** `bus.emit("player.damaged", amount=30)` is readable and forwards-
+compatible. Handlers can accept only the kwargs they care about.
+
+### Synchronous, no queuing
+**Reason:** Queued/deferred events add complexity with no concrete benefit
+for single-threaded game loops. All handlers fire immediately on emit.
+
+### Broken handlers are isolated with a warning
+**Reason:** A broken event handler should not crash the game or prevent other
+handlers from receiving the event. Exceptions are caught, a `warnings.warn`
+is emitted, and execution continues.
+
+### bus.clear_all() called on Application shutdown
+**Reason:** Prevents stale handler references from surviving between test
+runs or game sessions when the bus singleton persists.
+
+### Observable for reactive values, EventBus for discrete events
+**Reason:** These are genuinely different patterns. Observable is the right
+tool when something needs to react to "what is the current value". EventBus
+is right for "something just happened". Using one for everything creates
+awkward code.

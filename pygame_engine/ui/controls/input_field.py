@@ -1,6 +1,4 @@
 """
-ui/controls/input_field.py
-
 Single-line text input widget for pygame_engine.
 
 Supports typing, cursor movement, backspace, placeholder text, and
@@ -247,7 +245,6 @@ class InputField(Widget):
         pygame.draw.rect(surface, border, self.rect,
                          width=bw, border_radius=radius)
 
-        # Text or placeholder
         display_text = self._display_text()
         if display_text:
             colour = (theme.colours.text

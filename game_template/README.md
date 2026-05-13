@@ -8,8 +8,15 @@ A game built on [pygame_engine](../pygame_engine/).
 
 ### 1. Copy this template
 
-```bash
-cp -r template/ my_game/
+**Windows:**
+```
+xcopy game_template my_game /E /I
+cd my_game
+```
+
+**macOS / Linux:**
+```
+cp -r game_template/ my_game/
 cd my_game/
 ```
 
@@ -17,14 +24,8 @@ cd my_game/
 
 From the repo root:
 
-```bash
-pip install -e ../pygame_engine
 ```
-
-Or if pygame_engine is already installed:
-
-```bash
-pip install pygame-ce
+pip install -e ../pygame_engine
 ```
 
 ### 3. Rename the game
@@ -35,7 +36,7 @@ Search and replace `MY_GAME` with your game title in:
 
 ### 4. Run it
 
-```bash
+```
 python main.py
 ```
 
@@ -80,8 +81,7 @@ my_game/
 4. Navigate to it from another scene using `app.scene_manager`
 
 ```python
-from pygame_engine.scene import Scene
-from pygame_engine.scene.transitions import FadeTransition
+from pygame_engine.scene import Scene, FadeTransition
 
 class MyScene(Scene):
     def __init__(self, app):
@@ -100,8 +100,26 @@ class MyScene(Scene):
 ### Adding a game-specific action
 
 1. Add a constant to `game/actions.py`
-2. Add a keybinding in `main.py` → `_build_bindings()`
+2. Add a keybinding in `main.py` and pass to `app.input_manager.bindings`
 3. Query it in scenes with `app.input_manager.was_action_pressed(actions.MY_ACTION)`
+
+### Registering custom keybindings
+
+Pass a custom binding dict to `Application` via `AppConfig`, or set it on the
+input manager in your first scene's `on_enter`:
+
+```python
+import pygame
+from pygame_engine.input.bindings import DEFAULT_BINDINGS
+from game import actions
+
+def on_enter(self):
+    self._app.input_manager.bindings = {
+        **DEFAULT_BINDINGS,
+        pygame.K_z: actions.ATTACK,
+        pygame.K_x: actions.INTERACT,
+    }
+```
 
 ### Loading assets
 
@@ -128,11 +146,7 @@ from pygame_engine.persistence import SaveManager
 from pathlib import Path
 
 saves = SaveManager(Path("saves"), game_id="my_game", current_version=1)
-
-# Save
-saves.save("slot_1", {"level": 3, "gold": 120, "player_x": 64.0})
-
-# Load
+saves.save("slot_1", {"level": 3, "gold": 120})
 payload = saves.load_payload("slot_1")
 ```
 
@@ -140,7 +154,7 @@ payload = saves.load_payload("slot_1")
 
 ```python
 from pygame_engine.animation import SpriteAnimation, AnimationPlayer
-from pygame_engine.graphics.sprite_renderer import draw_animation_frame
+from pygame_engine.graphics import draw_animation_frame
 
 frames = self._app.assets.spritesheet("player.png", 48, 48)
 anim   = AnimationPlayer()
@@ -157,26 +171,9 @@ draw_animation_frame(surface, anim, player_rect)
 
 Press **F1** in-game to toggle the debug overlay (FPS, scene, flags).
 Press **F2** to dump the scene/widget tree to the console.
+Press **F3** to toggle the debug log console panel.
 
 Enable debug mode in `main.py` by setting `debug=True` in `AppConfig`.
-
----
-
-## Customising the theme
-
-```python
-from dataclasses import replace
-from pygame_engine.theme import get_theme, set_theme
-
-# In main() before app.run():
-theme = get_theme()
-my_theme = replace(theme,
-    button=replace(theme.button,
-        normal=replace(theme.button.normal, bg=(80, 40, 120))
-    )
-)
-app.set_theme(my_theme)
-```
 
 ---
 
@@ -186,15 +183,14 @@ app.set_theme(my_theme)
 # App
 from pygame_engine.app import Application, AppConfig
 
-# Scenes
+# Scenes + transitions
 from pygame_engine.scene import Scene, SceneManager
-from pygame_engine.scene.transitions import FadeTransition, SlideTransition, CrossfadeTransition
+from pygame_engine.scene import FadeTransition, SlideTransition, CrossfadeTransition
 
 # UI
 from pygame_engine.ui import Widget, Panel, Stack, Scrollable
-from pygame_engine.ui import Button, InputField, ProgressBar
-from pygame_engine.ui import Label, TextBlock
-from pygame_engine.ui import Toast, Tooltip
+from pygame_engine.ui import Button, Dropdown, InputField, ProgressBar
+from pygame_engine.ui import Label, TextBlock, Toast, Tooltip
 
 # Layout
 from pygame_engine.layout import anchor, row, column, grid
@@ -206,12 +202,18 @@ from pygame_engine.theme import get_theme, set_theme
 from pygame_engine.input import actions
 from game.actions import ATTACK, INTERACT   # game-specific
 
+# Graphics
+from pygame_engine.graphics import draw_sprite, draw_animation_frame
+from pygame_engine.graphics import draw_nine_slice, NineSlicePanel
+
 # Animation
 from pygame_engine.animation import Tween, SpriteAnimation, AnimationPlayer
-from pygame_engine.animation.easing import ease_out_cubic
 
 # Persistence
 from pygame_engine.persistence import SaveManager
+
+# Events
+from pygame_engine.events import bus
 
 # Utils
 from pygame_engine.utils.timers import Timer, Cooldown

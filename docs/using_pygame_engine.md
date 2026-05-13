@@ -1,5 +1,3 @@
-# Using pygame_engine
-
 A practical guide for building a game project on top of `pygame_engine`.
 
 ---
@@ -110,17 +108,18 @@ class MainMenuScene(Scene):
 ### Scene transitions
 
 ```python
-# Push an overlay (pause menu, dialog) — resumes current scene on pop
+from pygame_engine.scene import FadeTransition, SlideTransition, CrossfadeTransition
+
+# Without transition:
 app.scene_manager.push(PauseScene(app))
-
-# Replace current scene (move to next screen)
 app.scene_manager.replace(GameplayScene(app))
-
-# Pop back to the scene below
 app.scene_manager.pop()
-
-# Hard reset to a new scene (e.g. returning to main menu)
 app.scene_manager.clear_and_push(MainMenuScene(app))
+
+# With transition:
+app.scene_manager.push_with(PauseScene(app), SlideTransition(0.3, 'down'))
+app.scene_manager.replace_with(GameplayScene(app), FadeTransition(0.4))
+app.scene_manager.pop_with(CrossfadeTransition(0.25))
 ```
 
 ---
@@ -168,16 +167,28 @@ def build_main_menu(app):
 
 Assign the result to `self.root_widget` in `on_enter`.
 
+If your scene uses a `Dropdown` or floating `Tooltip`, override
+`overlay_render()` so the floating list appears above all other widgets:
+
+```python
+def overlay_render(self, surface):
+    self._resolution_dropdown.overlay_render(surface)
+```
+
 ### Available widgets
 
 | Widget | Purpose |
 |---|---|
 | `Widget` | Base class for custom widgets |
-| `Panel` | Themed background + child management |
-| `Stack` | Transparent grouping container |
-| `Button` | Clickable with `on_click` callback |
+| `Panel` | Themed background + child management (opt-in focus traversal) |
+| `Stack` | Transparent grouping container (opt-in focus traversal) |
+| `Scrollable` | Clipping viewport with mouse-wheel scroll |
+| `Button` | Clickable with `on_click` callback; keyboard-activatable when focused |
+| `Dropdown` | Option selector with floating list via `overlay_render()` |
+| `InputField` | Single-line text entry with cursor, placeholder, password mode |
+| `ProgressBar` | Horizontal or vertical fill bar |
 | `Label` | Single-line text display |
-| `TextBlock` | Multi-line text display |
+| `TextBlock` | Multi-line wrapped text with render caching |
 | `Toast` | Auto-dismissing notification |
 | `Tooltip` | Mouse-following context hint |
 
@@ -362,6 +373,54 @@ self._footstep.update(dt)
 if self._footstep.fired:
     app.audio.play_sfx(footstep_sfx)
 ```
+
+---
+
+## Particles
+
+```python
+from pygame_engine.particles.presets import explosion, fire_emitter, trail
+
+# One-shot burst
+fx = explosion(enemy.x, enemy.y)
+fx.burst(60)
+
+# Continuous emitter
+fire = fire_emitter(torch.x, torch.y, rate=40)
+fire.start()
+
+# Each frame
+fx.update(dt)
+fx.render(surface)   # alpha-blended
+# or: fx.render_fast(surface)  # solid, faster for high counts
+
+# Cull dead one-shots
+effects = [fx for fx in effects if not fx.is_empty]
+```
+
+---
+
+## Events
+
+Use the event bus for loose coupling between game systems:
+
+```python
+from pygame_engine.events import bus
+
+# Subscribe
+bus.on('player.damaged', hud.on_player_damaged)
+bus.once('tutorial.first_kill', show_tip)
+bus.on('player.*', analytics.record)   # wildcard
+
+# Emit (keyword args only)
+bus.emit('player.damaged', amount=30, source='spike_trap')
+
+# Unsubscribe
+bus.off('player.damaged', hud.on_player_damaged)
+bus.clear('player.damaged')   # remove all handlers for event
+```
+
+See `docs/event_model.md` for naming conventions and full API.
 
 ---
 

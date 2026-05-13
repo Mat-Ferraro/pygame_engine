@@ -2,19 +2,19 @@
 
 ## Purpose
 
-Provides time-based value animation for pygame_engine.
+Provides time-based value animation and sprite animation for pygame_engine.
 
 The animation system has three layers:
 
 1. **Easing functions** (`easing.py`) — pure math, transform t ∈ [0,1]
 2. **Tween** (`tween.py`) — single-value animator driven by delta-time
-3. **Animator** (`animator.py`) — multi-tween component (future)
+3. **Sprite animation** (`animator.py`) — frame-based sprite sequences via `SpriteAnimation` and `AnimationPlayer`
 
 ---
 
 ## Easing Functions
 
-Easing functions transform a normalised time value ``t`` (0.0 → 1.0) into
+Easing functions transform a normalised time value `t` (0.0 → 1.0) into
 a curve. They are pure functions with no state.
 
 ```python
@@ -26,7 +26,7 @@ value = ease_out_cubic(t)       # apply to alpha, position, scale, etc.
 
 ### Available functions
 
-All standard Robert Penner easing families are provided:
+All standard Robert Penner easing families are provided (30 total):
 
 | Family    | In                | Out                | In-Out                |
 |-----------|-------------------|--------------------|-----------------------|
@@ -111,13 +111,87 @@ Tween(0, 100, 1.0, ping_pong=True, auto_start=True)
 
 ---
 
-## Animator (future)
+## Sprite Animation
 
-`animator.py` is currently a stub. It will provide a component that drives
-multiple named tweens on a target object, with a simple API for playing
-named animation sequences.
+`animator.py` provides frame-based sprite animation via two classes:
+`SpriteAnimation` (immutable data) and `AnimationPlayer` (mutable state).
 
-Deferred until Tween is exercised by real game/UI usage.
+### SpriteAnimation
+
+Immutable data object: a named list of `pygame.Surface` frames with timing.
+Multiple `AnimationPlayer` instances can share one `SpriteAnimation`.
+
+```python
+from pygame_engine.animation import SpriteAnimation
+
+frames = app.assets.spritesheet("player.png", 48, 48)
+
+idle_anim = SpriteAnimation("idle", frames[0:4],  frame_duration=0.15)
+run_anim  = SpriteAnimation("run",  frames[4:12], frame_duration=0.08)
+jump_anim = SpriteAnimation("jump", frames[12:16],
+                            frame_duration=0.1, loop=False)
+```
+
+Frame duration can be a single float (uniform) or a list (per-frame).
+
+### AnimationPlayer
+
+Owns the playback state. Maintains a registry of named `SpriteAnimation`
+instances and tracks current frame, elapsed time, and direction.
+
+```python
+from pygame_engine.animation import AnimationPlayer
+
+player = AnimationPlayer()
+player.add("idle", idle_anim)
+player.add("run",  run_anim)
+player.add("jump", jump_anim)
+player.play("idle")
+
+# On-finish callback for non-looping animations:
+player.on_finish = lambda name: player.play("idle")
+
+# Each frame:
+player.update(dt)
+current_surface = player.current_frame
+```
+
+### Key properties
+
+| Property            | Description                                        |
+|---------------------|----------------------------------------------------|
+| `current_frame`     | The `pygame.Surface` for the current frame         |
+| `current_animation` | Name of the playing animation, or None             |
+| `frame_index`       | Current frame index within the active animation    |
+| `is_finished`       | True when a non-looping animation ends             |
+| `is_playing`        | True while an animation is active and not finished |
+
+### Control methods
+
+| Method               | Description                                        |
+|----------------------|----------------------------------------------------|
+| `play(name)`         | Switch to named animation (no-op if already playing) |
+| `play(name, restart=True)` | Force restart even if already playing       |
+| `stop()`             | Stop playback and hold on current frame            |
+| `add(name, anim)`    | Register a named animation                         |
+| `add_many(dict)`     | Register multiple animations at once               |
+
+### Ping-pong
+
+```python
+breath = SpriteAnimation("breath", frames, frame_duration=0.1, ping_pong=True)
+# Plays: 0→1→2→3→2→1→0→1... without jumping back to frame 0
+```
+
+### Rendering with sprite_renderer
+
+```python
+from pygame_engine.graphics import draw_animation_frame
+
+draw_animation_frame(surface, player, player_rect, flip_x=facing_left)
+```
+
+Or use `draw_sprite` for a single frame directly.
 
 ---
 
@@ -133,3 +207,10 @@ hidden coupling, and hard-to-debug magic.
 ### Tween duration must be > 0
 Zero-duration tweens are rejected at construction. Use `complete()` to
 snap to an end value instantly.
+
+### SpriteAnimation is immutable data; AnimationPlayer is mutable state
+Animations are defined once and shared. Players own playback state
+independently. This allows many entities to share one animation definition.
+
+### AnimationPlayer uses string names, not enum keys
+Simple, extensible, readable. `player.play("run")` is clearer than an enum.

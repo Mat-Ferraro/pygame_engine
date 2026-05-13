@@ -3,8 +3,11 @@ tests/test_scene_manager.py
 
 Tests for pygame_engine.scene.SceneManager.
 
-Covers: push/pop/replace/clear_and_push lifecycle hook ordering.
+Covers: push/pop/replace/clear_and_push lifecycle hook ordering,
+push_with/replace_with/pop_with transition methods, is_transitioning.
 """
+
+import pygame
 
 from pygame_engine.scene import Scene, SceneManager
 
@@ -21,10 +24,12 @@ class LifecycleScene(Scene):
     def on_resume(self) -> None: self.calls.append("resume")
 
 
+# ── Lifecycle hook ordering ───────────────────────────────────────────────────
+
 def test_push_pauses_previous_scene_and_enters_new_scene() -> None:
     manager = SceneManager()
-    first  = LifecycleScene("first")
-    second = LifecycleScene("second")
+    first   = LifecycleScene("first")
+    second  = LifecycleScene("second")
 
     manager.push(first)
     manager.push(second)
@@ -36,8 +41,8 @@ def test_push_pauses_previous_scene_and_enters_new_scene() -> None:
 
 def test_pop_exits_top_scene_and_resumes_scene_below() -> None:
     manager = SceneManager()
-    first  = LifecycleScene("first")
-    second = LifecycleScene("second")
+    first   = LifecycleScene("first")
+    second  = LifecycleScene("second")
 
     manager.push(first)
     manager.push(second)
@@ -97,3 +102,73 @@ def test_is_empty_reflects_stack_state() -> None:
 
     manager.pop()
     assert manager.is_empty is True
+
+
+# ── Transition methods ────────────────────────────────────────────────────────
+
+def test_push_with_transition_changes_scene() -> None:
+    from pygame_engine.scene.transitions import FadeTransition
+    manager = SceneManager()
+    s1 = LifecycleScene("first")
+    s2 = LifecycleScene("second")
+    manager.push(s1)
+
+    surface = pygame.Surface((100, 80))
+    manager.push_with(s2, FadeTransition(duration=0.3), surface=surface)
+
+    assert manager.current_scene is s2
+    assert s2.calls == ["enter"]
+
+
+def test_replace_with_transition_replaces_scene() -> None:
+    from pygame_engine.scene.transitions import SlideTransition
+    manager = SceneManager()
+    s1 = LifecycleScene("first")
+    s2 = LifecycleScene("second")
+    manager.push(s1)
+
+    surface  = pygame.Surface((100, 80))
+    removed  = manager.replace_with(s2, SlideTransition(0.2), surface=surface)
+
+    assert removed is s1
+    assert manager.current_scene is s2
+
+
+def test_pop_with_transition_pops_scene() -> None:
+    from pygame_engine.scene.transitions import CrossfadeTransition
+    manager = SceneManager()
+    s1 = LifecycleScene("first")
+    s2 = LifecycleScene("second")
+    manager.push(s1)
+    manager.push(s2)
+
+    surface = pygame.Surface((100, 80))
+    removed = manager.pop_with(CrossfadeTransition(0.2), surface=surface)
+
+    assert removed is s2
+    assert manager.current_scene is s1
+
+
+def test_is_transitioning_true_after_push_with() -> None:
+    from pygame_engine.scene.transitions import FadeTransition
+    manager = SceneManager()
+    s1 = LifecycleScene("first")
+    s2 = LifecycleScene("second")
+    manager.push(s1)
+
+    surface = pygame.Surface((100, 80))
+    manager.push_with(s2, FadeTransition(duration=1.0), surface=surface)
+    assert manager.is_transitioning is True
+
+
+def test_is_transitioning_false_after_duration() -> None:
+    from pygame_engine.scene.transitions import FadeTransition
+    manager = SceneManager()
+    s1 = LifecycleScene("first")
+    s2 = LifecycleScene("second")
+    manager.push(s1)
+
+    surface = pygame.Surface((100, 80))
+    manager.push_with(s2, FadeTransition(duration=0.1), surface=surface)
+    manager.update(0.5)
+    assert manager.is_transitioning is False

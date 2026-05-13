@@ -1,6 +1,4 @@
 """
-ui/containers/panel.py
-
 Panel container widget for pygame_engine.
 
 Panel is the standard building block for grouping widgets. It draws a
@@ -148,7 +146,9 @@ class Panel(Widget, FocusManager):
         return False
 
     def update(self, dt: float) -> None:
-        """Update all visible children in add-order."""
+        """Update all visible children. Skipped when panel is invisible."""
+        if not self.visible:
+            return
         for child in self._children:
             if child.visible:
                 child.update(dt)

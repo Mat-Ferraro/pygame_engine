@@ -1,5 +1,3 @@
-## Purpose
-
 The input system translates raw pygame input into engine-friendly runtime input state and higher-level actions.
 
 Its goals are:
@@ -55,7 +53,7 @@ Direct pygame events:
 - mouse button down
 - mouse button up
 - wheel input
-- text input if added later
+- text input (handled by `InputField` via TEXTINPUT events)
 
 ### Normalized Runtime State
 The engine should track:
@@ -186,8 +184,8 @@ The engine should support:
 - modifier state if needed later
 - optional repeat behavior handling
 
-Future possibility:
-- text input mode separate from command input mode
+Text input mode is implemented in `InputField` via TEXTINPUT events.
+`InputManager` remains command-style only.
 
 ---
 
@@ -233,10 +231,10 @@ Recommended design direction:
 
 Reserved debug actions should be defined explicitly.
 
-Examples:
-- debug overlay toggle
-- inspector toggle
-- console toggle
+These are all implemented:
+- `DEBUG_TOGGLE` (F1) — toggles `flags.show_overlay`
+- `INSPECTOR_TOGGLE` (F2) — dumps scene/widget tree to debug log
+- `CONSOLE_TOGGLE` (F3) — toggles `flags.show_console`
 
 These should not be scattered as random hardcoded keys.
 
@@ -256,7 +254,7 @@ These should not be scattered as random hardcoded keys.
 
 - Should mouse buttons also map into actions, or remain partly separate?
 - Should action queries be string-based, enum-based, or constant-based?
-- Should text input be supported in the first version?
+- Should `InputManager` expose raw text input events directly, or keep delegating to `InputField`?
 - Should `InputManager` process events directly or consume already-polled event lists?
 
 ---
@@ -279,13 +277,15 @@ Mouse clicks are not routed through the action system.
 rect. Routing mouse clicks through actions would add a layer with no benefit
 since widgets need the position anyway.
 
-### Text input deferred
-**Decision:** Text input (character entry, IME support) is not implemented
-in v1. `InputManager` handles command-style input only.
+### Text input via TEXTINPUT events — `InputField` widget
+**Decision:** Character entry (typing) is handled by the `InputField` widget
+via pygame's `TEXTINPUT` events, not by `InputManager`. `InputManager`
+handles command-style input (actions, key states) only.
 
-**Reason:** Text input is a distinct mode that warrants its own handling.
-Adding it now would complicate `InputManager` before the core system is
-exercised by real usage.
+**Reason:** Text input is a distinct mode. `InputField` calls
+`pygame.key.start_text_input()` on focus and `stop_text_input()` on unfocus,
+keeping text entry self-contained in the widget rather than polluting the
+action-based input system.
 
 ### `InputManager.update(events)` consumes the already-polled event list
 **Decision:** `Application` calls `pygame.event.get()` once per frame and

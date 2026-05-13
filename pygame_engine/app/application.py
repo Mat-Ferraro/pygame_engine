@@ -1,6 +1,4 @@
 """
-app/application.py
-
 The top-level runtime owner for a project built on pygame_engine.
 
 Application is responsible for:
@@ -31,15 +29,16 @@ import pygame
 
 from pygame_engine.app.config import AppConfig
 from pygame_engine.assets.asset_loader import AssetLoader
+from pygame_engine.audio.audio_manager import AudioManager
 from pygame_engine.debug.console import DebugConsole
 from pygame_engine.debug.overlay import DebugOverlay
-from pygame_engine.state.runtime_flags import flags as _runtime_flags
-from pygame_engine.audio.audio_manager import AudioManager
+from pygame_engine.events.event_bus import bus as _event_bus
 from pygame_engine.input.input_manager import InputManager
-from pygame_engine.theme.runtime import get_theme, set_theme
-from pygame_engine.theme.defaults import Theme
 from pygame_engine.scene.scene import Scene
 from pygame_engine.scene.scene_manager import SceneManager
+from pygame_engine.state.runtime_flags import flags as _runtime_flags
+from pygame_engine.theme.defaults import Theme
+from pygame_engine.theme.runtime import get_theme, set_theme
 
 
 class Application:
@@ -68,19 +67,17 @@ class Application:
         """
         self._config: AppConfig = config or AppConfig()
 
-        # These are all set during _startup(); declared here so the type
-        # checker knows they exist and their types.
         self._display_surface: pygame.Surface | None = None
-        self._clock: pygame.time.Clock | None = None
-        self._is_running: bool = False
+        self._clock:           pygame.time.Clock | None = None
+        self._is_running:      bool = False
 
-        # Services — all None until _startup() wires them up.
-        # SceneManager, InputManager etc. will be imported and instantiated
-        # here once those modules are written.
         self._scene_manager: SceneManager | None = None
         self._input_manager: InputManager | None = None
-        self._assets: AssetLoader | None = None
-        self._audio: AudioManager | None = None
+        self._assets:        AssetLoader  | None = None
+        self._audio:         AudioManager | None = None
+
+        # Debug tools are always created; they self-check RuntimeFlags
+        # and are no-ops when debug mode is off.
         self._debug_overlay: DebugOverlay = DebugOverlay()
         self._debug_console: DebugConsole = DebugConsole()
 
@@ -96,7 +93,6 @@ class Application:
 
         Args:
             initial_scene: The first scene to push onto the scene stack.
-                           Type will be ``Scene`` once that module exists.
         """
         try:
             self._startup(initial_scene)
@@ -118,7 +114,7 @@ class Application:
 
     def _startup(self, initial_scene: Scene) -> None:
         """
-        Initialise pygame, create the window, set up services, push the
+        Initialise pygame, create the window, set up all services, push the
         initial scene.
 
         Called once by :meth:`run` before the loop starts. Order matters:
@@ -128,26 +124,24 @@ class Application:
         pygame.init()
 
         self._display_surface = self._create_display()
-        self._clock = pygame.time.Clock()
-        self._is_running = True
+        self._clock           = pygame.time.Clock()
+        self._is_running      = True
 
         pygame.display.set_caption(self._config.title)
 
+        # Initialise all services
         self._input_manager = InputManager()
         self._assets = AssetLoader(
             self._config.asset_root,
             debug=self._config.debug,
         )
-        # Theme is globally accessible via get_theme(); no per-app instance needed.
-        # Projects can call set_theme() before or after run() to customise.
-        # TODO: initialise AssetLoader
         self._audio = AudioManager()
 
-        # Reset runtime flags to defaults, then apply config.debug
+        # Reset runtime flags to defaults, then apply config.debug.
+        # Debug overlay and console check these flags themselves each frame.
         _runtime_flags.reset()
         if self._config.debug:
             _runtime_flags.enable_debug_all()
-        # TODO: initialise debug tools if config.debug
 
         self._scene_manager = SceneManager()
         self._scene_manager.push(initial_scene)
@@ -156,17 +150,16 @@ class Application:
         """
         Drive the frame loop until ``_is_running`` becomes False.
 
-        Frame order (fixed, do not reorder without updating the doc):
-          1. poll events
-          2. update input snapshot
-          3. route events to scene flow
-          4. update scene flow
-          5. update debug / runtime overlays  (no-op when debug is off)
-          6. clear back-buffer
-          7. render scene flow
-          8. render overlays / debug          (no-op when debug is off)
-          9. flip / present display
-         10. tick clock → compute dt for next frame
+        Frame order (fixed — do not reorder without updating this docstring):
+          1.  Poll events
+          2.  Update input snapshot
+          3.  Route events to scene flow
+          4.  Update scene flow
+          5.  Clear back-buffer
+          6.  Render scene flow
+          7.  Render debug overlays (no-op when debug flags are off)
+          8.  Flip / present display
+          9.  Tick clock → compute dt for next frame
         """
         dt: float = 0.0
 
@@ -187,18 +180,15 @@ class Application:
             if self._scene_manager is not None:
                 self._scene_manager.update(dt)
 
-            # 5. Update debug overlays (skipped when debug is off)
-            # TODO: debug overlay update
-
-            # 6. Clear back-buffer
+            # 5. Clear back-buffer
             assert self._display_surface is not None
             self._display_surface.fill((0, 0, 0))
 
-            # 7. Render scene flow
+            # 6. Render scene flow
             if self._scene_manager is not None:
                 self._scene_manager.render(self._display_surface)
 
-            # 8. Render debug overlays
+            # 7. Render debug overlays (self-check flags; no-op when off)
             self._debug_overlay.render(
                 self._display_surface,
                 self._clock,
@@ -206,28 +196,31 @@ class Application:
             )
             self._debug_console.render(self._display_surface)
 
-            # 9. Present
+            # 8. Present
             pygame.display.flip()
 
-            # 10. Tick clock → dt for next frame
+            # 9. Tick clock → dt for next frame
             assert self._clock is not None
             raw_ms = self._clock.tick(self._config.target_fps)
-            dt = self._compute_dt(raw_ms)
+            dt     = self._compute_dt(raw_ms)
 
     def _shutdown(self) -> None:
         """
         Release resources and quit pygame.
 
-        Called by :meth:`run` in a ``finally`` block so it always runs, even
-        if the loop exits via an exception. Should not raise.
+        Called by :meth:`run` in a ``finally`` block so it always runs,
+        even if the loop exits via an exception. Should not raise.
         """
         if self._scene_manager is not None:
             # Pop all scenes cleanly so on_exit() is called on each.
             while not self._scene_manager.is_empty:
                 self._scene_manager.pop()
+
         if self._audio is not None:
             self._audio.shutdown()
-        # TODO: shutdown debug tools
+
+        # Clear event bus so stale handlers don't survive between runs.
+        _event_bus.clear_all()
 
         pygame.quit()
 
@@ -237,15 +230,12 @@ class Application:
         """
         Route a single pygame event through the engine's priority layers.
 
-        Routing order (from highest to lowest priority):
-          1. Application-level essential handling (quit, window resize)
-          2. Topmost / modal scene or overlay via SceneManager
-          3. Focused widget / UI layer              (handled inside scene)
-          4. Scene-level logic                      (handled inside scene)
-          5. Global debug / runtime shortcuts
+        Routing order (highest → lowest priority):
+          1. Application-level essentials (quit, window resize)
+          2. Scene flow via SceneManager
+          3. Global debug / runtime shortcuts (F1, F2)
 
-        Layers return True if they consume the event; lower layers are then
-        skipped. This matches the accepted engine input-routing contract.
+        Layers return True if they consume the event; lower layers are skipped.
         """
         # 1. Application-level essentials
         if event.type == pygame.QUIT:
@@ -256,41 +246,37 @@ class Application:
             self._on_resize(event.w, event.h)
             return
 
-        # 2–4. Scene flow (InputManager has already updated this frame)
+        # 2. Scene flow
         if self._scene_manager is not None:
             if self._scene_manager.handle_event(event):
                 return
 
-        # 5. Global debug shortcuts
+        # 3. Global debug shortcuts
         if self._input_manager is not None:
             from pygame_engine.input import actions as _actions
             from pygame_engine.state.runtime_flags import flags as _flags
             if self._input_manager.was_action_pressed(_actions.DEBUG_TOGGLE):
-                _flags.toggle('show_overlay')
+                _flags.toggle("show_overlay")
                 return
             if self._input_manager.was_action_pressed(_actions.INSPECTOR_TOGGLE):
                 from pygame_engine.debug.inspector import Inspector
                 Inspector().dump(self._scene_manager)
                 return
+            if self._input_manager.was_action_pressed(_actions.CONSOLE_TOGGLE):
+                _flags.toggle("show_console")
+                return
 
     # ── Display helpers ───────────────────────────────────────────────────────
 
     def _create_display(self) -> pygame.Surface:
-        """
-        Create and return the pygame display surface.
-
-        Reads window dimensions, fullscreen, resizable, and vsync from config.
-        Called once during :meth:`_startup`.
-        """
+        """Create and return the pygame display surface from config."""
         flags = 0
-
         if self._config.fullscreen:
             flags |= pygame.FULLSCREEN
         elif self._config.resizable:
             flags |= pygame.RESIZABLE
-
         if self._config.vsync:
-            flags |= pygame.SCALED  # SCALED enables vsync support
+            flags |= pygame.SCALED
 
         return pygame.display.set_mode(
             (self._config.width, self._config.height),
@@ -302,8 +288,13 @@ class Application:
         """
         Handle a window resize event.
 
-        Updates the display surface reference so the new dimensions are
-        reflected everywhere that reads ``display_surface``.
+        Recreates the display surface at the new size. Scenes and widgets
+        use the surface dimensions they receive in ``render()`` each frame,
+        so no further notification is needed — they adapt naturally.
+
+        Note: layout rects computed in ``on_enter`` against the old size
+        will not update automatically. Games that support resizing should
+        rebuild their layout in ``on_resume`` or on a resize event signal.
 
         Args:
             width:  New window width in pixels.
@@ -314,21 +305,11 @@ class Application:
             pygame.RESIZABLE,
             vsync=1 if self._config.vsync else 0,
         )
-        # TODO: notify SceneManager / layout system of new surface size
 
     # ── Delta-time ────────────────────────────────────────────────────────────
 
     def _compute_dt(self, raw_ms: int) -> float:
-        """
-        Convert the raw millisecond tick from the clock into a clamped
-        seconds-based delta-time value.
-
-        Args:
-            raw_ms: Milliseconds returned by ``pygame.time.Clock.tick()``.
-
-        Returns:
-            Delta time in seconds, clamped to ``config.max_dt`` if non-zero.
-        """
+        """Convert raw milliseconds from the clock into a clamped dt in seconds."""
         dt = raw_ms / 1000.0
         if self._config.max_dt > 0:
             dt = min(dt, self._config.max_dt)
@@ -338,12 +319,7 @@ class Application:
 
     @property
     def scene_manager(self) -> SceneManager:
-        """
-        The scene manager.
-
-        Only valid after ``run()`` has been called.
-        Raises ``RuntimeError`` if accessed before startup.
-        """
+        """The scene manager. Only valid after ``run()`` is called."""
         if self._scene_manager is None:
             raise RuntimeError(
                 "scene_manager is not available before Application.run() is called."
@@ -352,12 +328,7 @@ class Application:
 
     @property
     def audio(self) -> AudioManager:
-        """
-        The audio manager.
-
-        Only valid after ``run()`` has been called.
-        Raises ``RuntimeError`` if accessed before startup.
-        """
+        """The audio manager. Only valid after ``run()`` is called."""
         if self._audio is None:
             raise RuntimeError(
                 "audio is not available before Application.run() is called."
@@ -366,12 +337,7 @@ class Application:
 
     @property
     def assets(self) -> AssetLoader:
-        """
-        The asset loader.
-
-        Only valid after ``run()`` has been called.
-        Raises ``RuntimeError`` if accessed before startup.
-        """
+        """The asset loader. Only valid after ``run()`` is called."""
         if self._assets is None:
             raise RuntimeError(
                 "assets is not available before Application.run() is called."
@@ -380,35 +346,16 @@ class Application:
 
     @property
     def theme(self) -> Theme:
-        """
-        The active theme.
-
-        Convenience accessor — equivalent to ``get_theme()`` from
-        ``pygame_engine.theme.runtime``. Projects can replace the theme
-        via ``set_theme()`` or ``app.set_theme()``.
-        """
+        """The active theme. Equivalent to ``get_theme()``."""
         return get_theme()
 
     def set_theme(self, theme: Theme) -> None:
-        """
-        Replace the active theme.
-
-        Equivalent to calling ``pygame_engine.theme.runtime.set_theme()``.
-        Takes effect on the next frame.
-
-        Args:
-            theme: The new ``Theme`` instance to activate.
-        """
+        """Replace the active theme. Takes effect on the next frame."""
         set_theme(theme)
 
     @property
     def input_manager(self) -> InputManager:
-        """
-        The input manager.
-
-        Only valid after ``run()`` has been called.
-        Raises ``RuntimeError`` if accessed before startup.
-        """
+        """The input manager. Only valid after ``run()`` is called."""
         if self._input_manager is None:
             raise RuntimeError(
                 "input_manager is not available before Application.run() is called."
@@ -427,12 +374,7 @@ class Application:
 
     @property
     def display_surface(self) -> pygame.Surface:
-        """
-        The main display surface.
-
-        Only valid after :meth:`run` has been called (i.e. after startup).
-        Raises ``RuntimeError`` if accessed before startup.
-        """
+        """The main display surface. Only valid after ``run()`` is called."""
         if self._display_surface is None:
             raise RuntimeError(
                 "display_surface is not available before Application.run() is called."
@@ -441,12 +383,7 @@ class Application:
 
     @property
     def clock(self) -> pygame.time.Clock:
-        """
-        The master clock.
-
-        Only valid after :meth:`run` has been called.
-        Raises ``RuntimeError`` if accessed before startup.
-        """
+        """The master clock. Only valid after ``run()`` is called."""
         if self._clock is None:
             raise RuntimeError(
                 "clock is not available before Application.run() is called."

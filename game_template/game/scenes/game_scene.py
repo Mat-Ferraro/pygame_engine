@@ -1,6 +1,4 @@
 """
-game/scenes/game_scene.py
-
 Main gameplay scene.
 
 This is where your game actually happens. Replace the placeholder content
@@ -19,7 +17,7 @@ import pygame
 
 from pygame_engine.app import Application
 from pygame_engine.scene import Scene
-from pygame_engine.scene.transitions import SlideTransition
+from pygame_engine.scene import SlideTransition
 from pygame_engine.theme.runtime import get_theme
 
 from game import actions

@@ -1,6 +1,4 @@
 """
-state/runtime_flags.py
-
 Engine-level boolean runtime flags for pygame_engine.
 
 ``RuntimeFlags`` holds a small set of named boolean switches that
@@ -62,6 +60,7 @@ class RuntimeFlags:
     show_fps     — display FPS counter in window title or overlay
     show_rects   — draw widget/scene rects as coloured outlines
     show_overlay — display the debug overlay panel
+    show_console — display the debug console log panel
     """
 
     def __init__(self) -> None:
@@ -76,6 +75,9 @@ class RuntimeFlags:
 
         self.show_overlay: bool = False
         """Show the debug overlay panel."""
+
+        self.show_console: bool = False
+        """Show the debug console log panel."""
 
     # ── Convenience ───────────────────────────────────────────────────────────
 
@@ -111,6 +113,7 @@ class RuntimeFlags:
         self.show_fps     = True
         self.show_rects   = True
         self.show_overlay = True
+        self.show_console = True
 
     def as_dict(self) -> dict[str, bool]:
         """Return all flags as a plain dict."""

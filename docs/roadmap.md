@@ -159,9 +159,8 @@ Important for keyboard-navigable settings and forms.
 stubs. Every game wants hit effects, explosions, weather. Deferred until a
 real game pulls on it.
 
-**EventBus** — a proper pub/sub event bus for game-wide events ("player died",
-"level completed", etc.). Deferred until a second game reveals the concrete
-pattern needed. `Observable` covers the current reactive state needs.
+**EventBus** — ✅ now implemented. See `docs/event_model.md`.
+`Signal` typed wrapper also available in `events/signals.py`.
 
 ---
 

@@ -16,6 +16,7 @@ Usage::
 from pygame_engine.input.actions import (
     CANCEL,
     CONFIRM,
+    CONSOLE_TOGGLE,
     DEBUG_TOGGLE,
     INSPECTOR_TOGGLE,
     NAV_DOWN,
@@ -28,17 +29,17 @@ from pygame_engine.input.actions import (
 # ── Game-specific actions ─────────────────────────────────────────────────────
 # Define your game's custom actions here and add bindings in main.py
 
-ATTACK   = "attack"
-INTERACT = "interact"
-SPRINT   = "sprint"
+ATTACK    = "attack"
+INTERACT  = "interact"
+SPRINT    = "sprint"
 INVENTORY = "inventory"
-MAP      = "map"
+MAP       = "map"
 
 __all__ = [
     # Engine actions
     "CONFIRM", "CANCEL", "PAUSE",
     "NAV_UP", "NAV_DOWN", "NAV_LEFT", "NAV_RIGHT",
-    "DEBUG_TOGGLE", "INSPECTOR_TOGGLE",
+    "DEBUG_TOGGLE", "INSPECTOR_TOGGLE", "CONSOLE_TOGGLE",
     # Game actions
     "ATTACK", "INTERACT", "SPRINT", "INVENTORY", "MAP",
 ]

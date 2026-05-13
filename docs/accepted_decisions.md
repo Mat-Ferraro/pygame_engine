@@ -215,12 +215,17 @@ models/systems/ui, and a README explaining the development workflow.
 
 ---
 
-### 19. Events Package Removed
-The `events/` package (`event_bus.py`, `signals.py`) has been deleted.
+### 19. EventBus and Signals
+The `events/` package provides pub/sub event messaging for loose coupling
+between game systems.
 
-`Observable` in `state/observable.py` covers the reactive value use case.
-A proper pub/sub event bus will be built if and when a real game use case
-requires it — with the concrete pattern shaping the design.
+- `EventBus` — synchronous pub/sub with wildcard patterns, one-shot subscriptions,
+  and broken-handler isolation. Module-level `bus` singleton.
+- `Signal` — typed wrapper around a specific EventBus event for cleaner APIs.
+
+Use `EventBus` for discrete game events ("player.damaged", "item.collected").
+Use `Observable` for reactive values (a health float that the HUD watches).
+These are complementary, not redundant.
 
 ---
 
@@ -245,3 +250,46 @@ Passing no transition is always valid and has zero overhead.
 ### 22. Physics Is Out of Scope
 `pygame_engine` will not include a physics engine. See `roadmap.md`.
 Games that need physics should use **pymunk** as a game-level dependency.
+
+---
+
+### 23. Scenes Receive Application Directly
+Game scenes receive the `Application` instance as a constructor argument
+and store it as `self._app`.
+
+```python
+class GameScene(Scene):
+    def __init__(self, app: Application) -> None:
+        super().__init__()
+        self._app = app
+```
+
+Scenes access services via `self._app.input_manager`, `self._app.assets`,
+`self._app.audio`, `self._app.scene_manager`, etc.
+
+**Reason:** A narrower context object was considered but deferred. Direct
+app access is simple, explicit, and sufficient for the current scope. If
+coupling becomes a problem across many game projects, a `SceneContext`
+wrapper can be introduced without breaking existing scenes.
+
+**Rule:** Scenes use `self._app` for cross-cutting services. They do not
+import `Application` as a global or use module-level singletons for
+services (other than `bus` and `flags` which are intentionally global).
+
+---
+
+### 24. Scene overlay_render Pass
+`Scene.render()` calls `overlay_render(surface)` as a second pass after
+the main widget tree render.
+
+Scenes that use `Dropdown` or floating `Tooltip` widgets override
+`overlay_render()` to render those widgets last, ensuring they appear
+above all other content:
+
+```python
+def overlay_render(self, surface):
+    self._resolution_dropdown.overlay_render(surface)
+```
+
+Default implementation is a no-op. Scenes that do not use floating
+widgets do not need to override it.
