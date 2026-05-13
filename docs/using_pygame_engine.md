@@ -1,17 +1,3 @@
-| Engine | Your game |
-|---|---|
-| Application runtime and main loop | Gameplay rules and systems |
-| Scene flow and stack management | Game-specific scenes |
-| UI widget library (15 widgets) | Composite widgets (inventory, HUD panels) |
-| Layout, theme, input abstraction | Game keybindings and theme overrides |
-| Camera, Tilemap, Dialogue | Game-specific maps, scripts, and entities |
-| Pathfinding, Lighting, Audio | Game AI, atmosphere, sound design |
-| Animation state machine | Character-specific states and transitions |
-| Asset loading and caching | Asset files and directory structure |
-| Persistence with migrations | Save payload schema and game state meaning |
-| Localisation | Translation strings |
-| Crash reporting | Game-specific error context |
-
 ---
 
 ## Quick start
@@ -267,14 +253,24 @@ atlas = app.assets.atlas("ui.atlas.png", "ui.atlas.json")
 ## Localisation
 
 ```python
-from game.locale import t, load_locales, set_locale
+from pygame_engine.locale import LocaleStore
 
-load_locales()
-label.text = t("menu.start")
-label.text = t("hud.score", value=42)
-label.text = t("item.apple", count=3)
-set_locale("fr")
+store = LocaleStore(fallback_locale="en")
+store.load_file(Path("assets/locale/en.json"), locale="en")
+store.load_file(Path("assets/locale/fr.json"), locale="fr")
+store.set_locale("en")
+
+label.text = store.t("menu.start")
+label.text = store.t("hud.score", value=42)
+label.text = store.t("item.apple", count=3)  # plural form
+
+# Hot-swap language at runtime
+store.set_locale("fr")
+store.available_locales   # ['en', 'fr']
 ```
+
+In the game template, the `game.locale` module wraps this with a
+module-level `t()` shorthand — see `game/locale/__init__.py`.
 
 ---
 
@@ -363,6 +359,116 @@ lbl.render(surface)
 
 Supported tags: `[b]bold[/b]`, `[i]italic[/i]`, `[color=#rrggbb]text[/color]`, `[size=N]text[/size]`.
 Tags may be nested. Unknown tags render as literal text.
+
+---
+
+## Persistence
+
+```python
+from pygame_engine.persistence import SaveManager
+from pathlib import Path
+
+sm = SaveManager(save_dir=Path("saves"), game_id="my_game")
+
+# Save arbitrary payload
+sm.save("slot1", {"level": 3, "hp": 80, "items": ["sword"]})
+
+# Load
+data    = sm.load("slot1")
+payload = data["payload"]
+
+# Manage slots
+sm.exists("slot1")  # True
+sm.delete("slot1")
+sm.list_slots()     # list of slot metadata dicts
+```
+
+---
+
+## Particles
+
+```python
+from pygame_engine.particles.presets import (
+    explosion, sparkle, smoke, fire_emitter, trail, hit_effect
+)
+
+# One-shot burst (call burst() then update/render each frame)
+fx = explosion(mx, my)
+fx.burst(40)
+
+# Continuous emitter
+fire = fire_emitter(x, y, rate=30)
+fire.start()
+fire.x, fire.y = player.rect.centerx, player.rect.bottom
+fire.update(dt)
+fire.render(surface)        # or fire.render_fast(surface)
+fire.particle_count         # live particle count
+fire.is_empty               # True when all particles dead
+```
+
+---
+
+## State
+
+```python
+from pygame_engine.state import Observable
+from pygame_engine.state.runtime_flags import flags
+
+# Observable — fires callbacks on value change
+score = Observable(0)
+score.subscribe(lambda val: hud.set_score(val))
+score.value = 100     # fires callback immediately
+score.value           # 100
+
+# RuntimeFlags — named boolean engine switches
+flags.show_overlay = True   # F1 debug info panel
+flags.show_console = True   # F3 log panel
+flags.show_rects   = True   # widget bounding boxes
+flags.toggle("show_fps")    # toggle by name
+flags.reset()              # all back to False
+flags.as_dict()            # {'debug': False, ...}
+```
+
+---
+
+## Input remapping
+
+```python
+inp = app.input_manager
+
+# Remap at runtime
+inp.remap(actions.JUMP, pygame.K_z)
+inp.remap_controller(actions.CONFIRM, button=0)
+
+# Query current binding
+key = inp.get_key_for_action(actions.CONFIRM)   # int or None
+btn = inp.get_button_for_action(actions.CONFIRM)
+
+# Human-readable names (for settings UI)
+from pygame_engine.input.bindings import key_name, controller_button_name
+key_name(pygame.K_RETURN)      # 'Enter'
+controller_button_name(0)      # 'A / Cross'
+
+# Serialise / restore / reset
+saved = inp.bindings_to_dict()
+inp.bindings_from_dict(saved)
+inp.reset_to_defaults()
+```
+
+---
+
+## Haptic feedback
+
+```python
+# Rumble all connected controllers
+inp.rumble(low=0.3, high=0.8, duration_ms=200)
+
+# Rumble a specific controller
+inp.rumble(low=0.5, high=0.5, duration_ms=300, joystick_id=0)
+
+# Stop immediately
+inp.stop_rumble()
+```
 
 ---
 

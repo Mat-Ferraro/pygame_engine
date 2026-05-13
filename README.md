@@ -1,4 +1,4 @@
-# pygame_engine
+Version 1.3.0
 
 A lightweight, reusable framework built on top of pygame-ce for 2D games.
 
@@ -23,6 +23,7 @@ on making your game instead of rebuilding the same infrastructure every time.
 
 **Theme & styling**
 - Design token system with a full default theme
+- File-driven theming — `theme_from_file(path)` loads a JSON override, `reload_theme_file()` for live hot-reload
 - File-driven theming — load a JSON file to override colours, sizes, spacing
 - Live hot-reload — edit `assets/theme.json`, press R to see changes instantly
 - Rich text — `[b]bold[/b]` `[i]italic[/i]` `[color=#rrggbb]coloured[/color]`
@@ -46,6 +47,7 @@ on making your game instead of rebuilding the same infrastructure every time.
 - Sprite atlas — pack surfaces at startup, blit by name
 - Localisation — key lookup, plural forms, runtime language switching
 - Persistence — `SaveManager` with atomic writes and migration pipeline
+- Localisation — `LocaleStore` with key lookup, plural forms, and runtime language switching
 
 **Audio**
 - `AudioManager` — music, SFX, volume, mute

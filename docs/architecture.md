@@ -1,5 +1,3 @@
-`pygame_engine` is a lightweight reusable pygame-ce framework for 2D games.
-
 It provides: application loop, scene flow, UI toolkit, layout helpers,
 theme system, input abstraction, assets, audio, animation, particles,
 camera, tilemap, dialogue, pathfinding, lighting, localisation, and debug tools.
@@ -31,9 +29,9 @@ physics simulation, networking, or a visual editor.
 ```
 pygame_engine/              ← repo root
 ├── docs/                   ← architecture and system documentation
-├── examples/               ← 12 runnable usage examples
+├── examples/               ← 21 runnable usage examples
 ├── game_template/          ← copy-and-start skeleton for new projects
-├── tests/                  ← 1100+ automated tests (38 files)
+├── tests/                  ← 1083+ automated tests (45 files)
 │   └── conftest.py
 ├── pygame_engine/          ← the importable Python package
 │   ├── animation/          ← Tween, SpriteAnimation, AnimationPlayer, StateMachine
@@ -141,6 +139,7 @@ Scene contracts, stack management, and transitions.
 
 ### `theme/`
 Design tokens, `Theme` dataclass, `get_theme()`/`set_theme()`.
+`theme_from_file()`, `reload_theme_file()`, `theme_to_dict()` — file-driven theming.
 File-driven theming: `theme_from_file()`, `reload_theme_file()`, `theme_to_dict()`.
 
 ### `graphics/`
@@ -156,7 +155,7 @@ Draw helpers, nine-slice panels, sprite renderer, surface utilities.
 
 ## Current Implementation Status
 
-All planned phases complete. 1033+ tests across 38 files.
+All planned phases complete. 1083+ tests across 45 files.
 
 - Phases 1–8: Runtime, UI, layout, theme, assets, audio, animation, particles, persistence, debug, EventBus, transitions, game template
 - Phase 9: Camera, Tilemap, Dialogue, Slider/Checkbox/RadioGroup
