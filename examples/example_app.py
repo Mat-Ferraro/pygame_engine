@@ -2,62 +2,113 @@
 examples/example_app.py
 
 Minimal end-to-end spine example.
+
+Proves that the full chain works and demonstrates core systems:
+    AppConfig → Application → SceneManager → Scene → Widget
+    + InputManager (action queries)
+    + Layout (anchor)
+    + Theme (colours, typography)
+    + Tween + easing (animated widget)
+    + Timer (FPS display)
+
+What you see:
+- Dark background that slowly shifts colour
+- A centred widget that pulses and slides in on entry
+- FPS counter in the window title
+- ESC exits via the action system
+
+Run from the repo root:
+    python -m examples.example_app
 """
 
-import colorsys
 import math
+
 import pygame
 
+from pygame_engine.animation import Tween
+from pygame_engine.animation.easing import ease_out_back
 from pygame_engine.app import Application, AppConfig
 from pygame_engine.input import actions
 from pygame_engine.layout import anchor
 from pygame_engine.scene import Scene
-from pygame_engine.ui.base import Widget
+from pygame_engine.theme.runtime import get_theme
+from pygame_engine.ui import Label
+from pygame_engine.ui.base.widget import Widget
 
 
-class ColourBlock(Widget):
-    def __init__(self, rect: pygame.Rect, colour: tuple[int, int, int]) -> None:
+# ── Animated widget ───────────────────────────────────────────────────────────
+
+class AnimatedBlock(Widget):
+    """
+    A coloured rectangle that:
+    - slides in from below on creation (Tween + ease_out_back)
+    - pulses its brightness continuously (sine wave)
+    - draws a centred label
+    """
+
+    def __init__(self, rect: pygame.Rect) -> None:
         super().__init__(rect)
-        self._base_colour = colour
-        self._t: float = 0.0
+        theme = get_theme()
+
+        self._t:     float = 0.0
+        self._start_y = rect.y + 120   # start below final position
+
+        # Slide-in tween
+        self._slide = Tween(
+            start=self._start_y,
+            end=rect.y,
+            duration=0.6,
+            easing=ease_out_back,
+            auto_start=True,
+        )
+
+        self._label = Label(
+            pygame.Rect(rect),
+            "pygame_engine",
+            font_size=theme.typography.lg,
+            colour=theme.colours.text,
+            align="center",
+        )
 
     def update(self, dt: float) -> None:
         self._t += dt
+        self._slide.update(dt)
+        self.rect.y = int(self._slide.value)
+        self._label.set_rect(pygame.Rect(self.rect))
 
     def render(self, surface: pygame.Surface) -> None:
         if not self.visible:
             return
 
-        pulse = 0.6 + 0.4 * abs(math.sin(self._t * 2.0))
-        colour = tuple(int(c * pulse) for c in self._base_colour)
-        pygame.draw.rect(surface, colour, self.rect, border_radius=8)
-        pygame.draw.rect(surface, (255, 255, 255), self.rect, width=2, border_radius=8)
+        theme  = get_theme()
+        pulse  = 0.65 + 0.35 * abs(math.sin(self._t * 1.8))
+        colour = tuple(int(c * pulse) for c in theme.colours.bg_overlay)
 
+        pygame.draw.rect(surface, colour, self.rect, border_radius=10)
+        pygame.draw.rect(surface, theme.colours.border, self.rect,
+                         width=1, border_radius=10)
+        self._label.render(surface)
+
+
+# ── Scene ─────────────────────────────────────────────────────────────────────
 
 class ExampleScene(Scene):
-    blocks_input_below = True
-    blocks_update_below = True
-    blocks_render_below = True
 
     def __init__(self, app: Application) -> None:
         super().__init__()
         self._app = app
-        self._bg_hue: float = 0.0
+        self._hue: float = 0.0
 
     def on_enter(self) -> None:
-        print("[ExampleScene] on_enter")
-        screen = pygame.Rect(0, 0, self._app.config.width, self._app.config.height)
-        rect = anchor(screen, (200, 120), "center")
-        self.root_widget = ColourBlock(rect, (100, 160, 240))
+        screen = pygame.Rect(0, 0,
+                             self._app.config.width,
+                             self._app.config.height)
+        self.root_widget = AnimatedBlock(
+            anchor(screen, (340, 100), "center")
+        )
 
     def on_exit(self) -> None:
         print("[ExampleScene] on_exit")
-
-    def on_pause(self) -> None:
-        print("[ExampleScene] on_pause")
-
-    def on_resume(self) -> None:
-        print("[ExampleScene] on_resume")
 
     def _handle_event_scene(self, event: pygame.event.Event) -> bool:
         if self._app.input_manager.was_action_pressed(actions.CANCEL):
@@ -66,50 +117,31 @@ class ExampleScene(Scene):
         return False
 
     def update(self, dt: float) -> None:
-        self._bg_hue = (self._bg_hue + dt * 0.05) % 1.0
+        self._hue = (self._hue + dt * 0.04) % 1.0
         pygame.display.set_caption(
-            f"{self._app.config.title}  |  "
-            f"FPS: {self._app.clock.get_fps():.0f}"
+            f"{self._app.config.title}  —  "
+            f"{self._app.clock.get_fps():.0f} fps"
         )
         super().update(dt)
 
     def render(self, surface: pygame.Surface) -> None:
-        r, g, b = colorsys.hsv_to_rgb(self._bg_hue, 0.6, 1.0)
-        bg = (int(r * 40), int(g * 40), int(b * 40))
-        surface.fill(bg)
-        _draw_grid(surface, (255, 255, 255), alpha=18)
-        _draw_label(surface, "pygame_engine  —  spine example", (surface.get_width() // 2, 40))
-        _draw_label(surface, "ESC to quit", (surface.get_width() // 2, surface.get_height() - 40), size=18)
+        import colorsys
+        r, g, b = colorsys.hsv_to_rgb(self._hue, 0.4, 0.14)
+        surface.fill((int(r * 255), int(g * 255), int(b * 255)))
+
+        theme = get_theme()
+        font  = pygame.font.SysFont(theme.typography.family,
+                                    theme.typography.xs)
+        hint  = font.render("ESC to quit", True, theme.colours.text_secondary)
+        surface.blit(hint, (
+            surface.get_width()  // 2 - hint.get_width()  // 2,
+            surface.get_height() - 32,
+        ))
+
         super().render(surface)
 
 
-def _draw_grid(
-    surface: pygame.Surface,
-    colour: tuple[int, int, int],
-    alpha: int = 20,
-    spacing: int = 60,
-) -> None:
-    w, h = surface.get_size()
-    grid_surf = pygame.Surface((w, h), pygame.SRCALPHA)
-    line_colour = (*colour, alpha)
-    for x in range(0, w, spacing):
-        pygame.draw.line(grid_surf, line_colour, (x, 0), (x, h))
-    for y in range(0, h, spacing):
-        pygame.draw.line(grid_surf, line_colour, (0, y), (w, y))
-    surface.blit(grid_surf, (0, 0))
-
-
-def _draw_label(
-    surface: pygame.Surface,
-    text: str,
-    centre: tuple[int, int],
-    size: int = 22,
-) -> None:
-    font = pygame.font.SysFont("segoeui,helvetica,arial", size)
-    rendered = font.render(text, True, (220, 220, 220))
-    rect = rendered.get_rect(center=centre)
-    surface.blit(rendered, rect)
-
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 def run() -> None:
     config = AppConfig(
@@ -117,7 +149,6 @@ def run() -> None:
         width=1280,
         height=720,
         target_fps=60,
-        debug=False,
     )
     app = Application(config)
     app.run(ExampleScene(app))

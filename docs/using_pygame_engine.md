@@ -1,247 +1,374 @@
-## Purpose
+# Using pygame_engine
 
-This document explains how a future game project should use `pygame_engine`.
-
-It is written from the perspective of a project built **with** the engine, not the engine itself.
+A practical guide for building a game project on top of `pygame_engine`.
 
 ---
 
-## Accepted Direction
+## What the engine provides vs what your game provides
 
-`pygame_engine` is a lightweight framework.
+| Engine | Your game |
+|---|---|
+| Application runtime and main loop | Gameplay rules and systems |
+| Scene flow and stack management | Game-specific scenes |
+| UI widget library | Composite widgets (inventory cards, HUD panels, etc.) |
+| Layout, theme, input abstraction | Game-specific keybindings and theme overrides |
+| Asset loading and caching | Asset files and directory structure |
+| Audio playback and volume control | Music tracks and sound effects |
+| Animation (Tween, easing) | Animated game objects |
+| Generic utils (timers, math, rects) | Domain models and game entities |
 
-That means a future game project should rely on it for:
-- runtime structure
-- scenes
-- UI primitives
-- layout helpers
-- input abstraction
-- theming
-- shared asset, persistence, audio, and debug support
-
-It should **not** expect the engine to contain game-specific systems or genre rules.
-
----
-
-## What Belongs in the Engine
-
-`pygame_engine` should provide:
-- application runtime shell
-- scene system
-- UI primitives
-- layout helpers
-- input abstraction
-- theme system
-- asset, persistence, audio, and debug helpers
-- animation and particle support
+The engine stays generic. Your game contains the unique behaviour.
 
 ---
 
-## What Belongs in a Game Project
+## Starting a new game project
 
-A game project should own:
-- gameplay rules
-- models/entities
-- progression systems
-- save payload schemas
-- content data
-- story/dialogue
-- game-specific scenes
-- game-specific composite widgets
+### Recommended project structure
 
-Engine stays generic.
-The game project contains the unique behavior.
-
----
-
-## Typical New Game Structure
-
-A future game project might look like:
-
-```text
+```
 my_game/
-  assets/
-  data/
-  game/
-    scenes/
-    systems/
-    models/
-    ui/
-    persistence/
-  main.py
+├── assets/
+│   ├── fonts/
+│   ├── images/
+│   │   ├── ui/
+│   │   └── sprites/
+│   └── sounds/
+├── game/
+│   ├── scenes/         ← your Scene subclasses
+│   ├── ui/             ← composite widgets built from engine widgets
+│   ├── systems/        ← gameplay logic
+│   └── models/         ← domain objects (Player, World, etc.)
+└── main.py
 ```
 
-The game imports `pygame_engine` for framework support.
-
----
-
-## First Things a New Game Should Create
-
-A new project using the engine will usually need:
-
-1. an application entry point
-2. an initial scene
-3. game-specific scene classes
-4. game-specific data/models/systems
-5. optional composite widgets built from engine widgets
-
----
-
-## Recommended Startup Flow
-
-A new game should:
-1. configure the application
-2. create the initial scene
-3. create the `Application`
-4. hand the initial scene to scene management
-5. run the app loop
-
-Exact API may change, but the concept should stay stable.
-
----
-
-## Scenes in a Game Project
-
-Game scenes should use engine scene contracts.
-
-Examples:
-- main menu scene
-- gameplay scene
-- settings scene
-- pause overlay
-
-Accepted engine direction:
-- scene flow is stack-based
-- scenes may own a `root_widget`
-- scenes should stay focused on coordination and flow
-
----
-
-## Widgets in a Game Project
-
-The engine should provide reusable primitive widgets like:
-- `Button`
-- `Panel`
-- `Label`
-- `TextBlock`
-- `Dropdown`
-- `Tooltip`
-- `Toast`
-
-A game project may build composite widgets from these:
-- `PartyPanel`
-- `InventoryCard`
-- `MissionSummaryPanel`
-
-Those composites usually belong in the game repo, not the engine.
-
----
-
-## Public Imports
-
-Preferred usage direction:
+### Minimal entry point
 
 ```python
-from pygame_engine.ui import Button
-from pygame_engine.scene import Scene
+# main.py
+from pygame_engine.app import Application, AppConfig
+from game.scenes.main_menu import MainMenuScene
+
+config = AppConfig(
+    title="My Game",
+    width=1280,
+    height=720,
+    target_fps=60,
+    asset_root=Path("assets"),
+)
+Application(config).run(MainMenuScene)
 ```
 
-Game projects should not need to rely on deep internal import paths for common engine features.
+---
+
+## Scenes
+
+Subclass `Scene` for each high-level application state.
+
+```python
+from pygame_engine.scene import Scene
+import pygame
+
+class MainMenuScene(Scene):
+
+    # Blocking policy (all True by default — a full-screen scene)
+    blocks_input_below  = True
+    blocks_update_below = True
+    blocks_render_below = True
+
+    def __init__(self, app):
+        super().__init__()
+        self._app = app
+
+    def on_enter(self):
+        """Called once when this scene becomes active. Build your UI here."""
+        ...
+
+    def on_exit(self):
+        """Called once when this scene is permanently removed."""
+        ...
+
+    def on_pause(self):
+        """Called when another scene is pushed on top of this one."""
+        ...
+
+    def on_resume(self):
+        """Called when the scene above this one is popped."""
+        ...
+
+    def _handle_event_scene(self, event):
+        """Scene-level input handling (after root_widget gets first look)."""
+        return False
+
+    def update(self, dt):
+        super().update(dt)   # delegates to root_widget
+
+    def render(self, surface):
+        surface.fill((22, 22, 30))
+        super().render(surface)  # delegates to root_widget
+```
+
+### Scene transitions
+
+```python
+# Push an overlay (pause menu, dialog) — resumes current scene on pop
+app.scene_manager.push(PauseScene(app))
+
+# Replace current scene (move to next screen)
+app.scene_manager.replace(GameplayScene(app))
+
+# Pop back to the scene below
+app.scene_manager.pop()
+
+# Hard reset to a new scene (e.g. returning to main menu)
+app.scene_manager.clear_and_push(MainMenuScene(app))
+```
 
 ---
 
-## Theme Usage
+## UI
 
-A game should normally:
-- start from engine defaults
-- override colors, fonts, spacing, or styles as needed
-- avoid modifying engine widget logic just to change visuals
+### Building a screen
 
-The theme system exists to separate style from behavior.
+```python
+from pygame_engine.ui import Button, Label, Panel, Stack
+from pygame_engine.layout import anchor, column
+from pygame_engine.theme.runtime import get_theme
+import pygame
 
----
+def build_main_menu(app):
+    screen = pygame.Rect(0, 0, app.config.width, app.config.height)
+    theme  = get_theme()
 
-## Input Usage
+    # A centred panel
+    panel = Panel(anchor(screen, (300, 320), "center"))
 
-A game should:
-- use action-based input where possible
-- define project-specific bindings if needed
-- avoid scattering raw key handling everywhere
+    # Title above the panel
+    title = Label(
+        pygame.Rect(panel.rect.x, panel.rect.y - 56, panel.rect.width, 44),
+        "My Game",
+        font_size=theme.typography.xxl,
+        align="center",
+    )
 
-This keeps controls easier to change later.
+    # Buttons laid out in a column inside the panel
+    btn_rects = column(panel.rect, count=3,
+                       item_size=(220, 52), spacing=12,
+                       padding=theme.spacing.xl)
 
----
+    panel.add(Button(btn_rects[0], "New Game", on_click=...))
+    panel.add(Button(btn_rects[1], "Options",  on_click=...))
+    panel.add(Button(btn_rects[2], "Quit",     on_click=app.stop))
 
-## Asset Usage
+    # Use Stack as a transparent root to hold all top-level widgets
+    root = Stack(pygame.Rect(screen))
+    root.add(panel)
+    root.add(title)
+    return root
+```
 
-A game should:
-- keep game assets in its own asset structure
-- use engine asset helpers for loading/caching
-- avoid one-off loading code in every scene
+Assign the result to `self.root_widget` in `on_enter`.
 
-The engine currently prefers lazy loading with caching and loud failure during development.
+### Available widgets
 
----
+| Widget | Purpose |
+|---|---|
+| `Widget` | Base class for custom widgets |
+| `Panel` | Themed background + child management |
+| `Stack` | Transparent grouping container |
+| `Button` | Clickable with `on_click` callback |
+| `Label` | Single-line text display |
+| `TextBlock` | Multi-line text display |
+| `Toast` | Auto-dismissing notification |
+| `Tooltip` | Mouse-following context hint |
 
-## Persistence Usage
+### Building custom widgets
 
-A game should use engine persistence for infrastructure, not game meaning.
+```python
+from pygame_engine.ui.base.widget import Widget
+from pygame_engine.theme.runtime import get_theme
+import pygame
 
-### Use the engine for:
-- save slot handling
-- safe read/write helpers
-- metadata/version support
-- migration infrastructure
-- generic serializer support
+class HealthBar(Widget):
 
-### Use the game project for:
-- defining what gets saved
-- building the save payload
-- reconstructing game state from saved data
-- game-specific migration rules
+    def __init__(self, rect, max_hp):
+        super().__init__(rect)
+        self.max_hp  = max_hp
+        self.current = max_hp
 
-### Recommended pattern
-1. game project builds plain serializable save payload
-2. engine persistence layer writes and reads that payload safely
-3. game project reconstructs domain objects from loaded payload
-
-This keeps the engine generic and the game-specific save model where it belongs.
-
----
-
-## Debug Tool Usage
-
-Debug tools are intended to be supported and useful during game development.
-
-A game project should:
-- use engine debug overlays and tools where they help
-- avoid baking project-specific debug hacks into the engine
-- wire project-level debug needs cleanly on top of engine support
-
----
-
-## Documentation Discipline
-
-When building with the engine:
-- update engine docs when engine contracts change
-- update game docs when game architecture decisions are made
-- avoid relying only on chat history or memory for major decisions
-
----
-
-## Recommended Workflow
-
-1. use engine primitives first
-2. extend only when a real gap exists
-3. keep game-specific logic out of engine packages
-4. document framework-level decisions as they happen
-5. add examples/tests when reusable behavior is introduced
+    def render(self, surface):
+        if not self.visible:
+            return
+        theme = get_theme()
+        ratio = max(0.0, self.current / self.max_hp)
+        filled = pygame.Rect(self.rect.x, self.rect.y,
+                             int(self.rect.width * ratio), self.rect.height)
+        pygame.draw.rect(surface, (180, 60, 60), self.rect, border_radius=4)
+        pygame.draw.rect(surface, (60, 200, 80), filled, border_radius=4)
+```
 
 ---
 
-## Rules for Future Projects
+## Input
 
-1. The engine should remain generic.
-2. Game projects should compose engine primitives into project-specific behavior.
-3. If the same project-specific pattern appears across multiple projects, only then consider moving it into the engine.
-4. Avoid promoting one project’s temporary needs into engine architecture too early.
+Use action queries rather than raw key checks:
+
+```python
+from pygame_engine.input import actions
+
+# In _handle_event_scene or a widget's _handle_event_widget:
+def _handle_event_scene(self, event):
+    if self._app.input_manager.was_action_pressed(actions.CONFIRM):
+        self._on_confirm()
+        return True
+    if self._app.input_manager.is_action_down(actions.NAV_UP):
+        self._scroll_up()
+        return True
+    return False
+```
+
+### Adding game-specific actions
+
+```python
+# game/input_actions.py
+from pygame_engine.input.actions import CONFIRM, CANCEL  # re-export engine actions
+
+ATTACK   = "attack"
+INTERACT = "interact"
+SPRINT   = "sprint"
+```
+
+### Custom bindings
+
+```python
+import pygame
+from pygame_engine.input.bindings import DEFAULT_BINDINGS
+from game import input_actions
+
+MY_BINDINGS = {
+    **DEFAULT_BINDINGS,
+    pygame.K_z:     input_actions.ATTACK,
+    pygame.K_e:     input_actions.INTERACT,
+    pygame.K_LSHIFT: input_actions.SPRINT,
+}
+```
+
+Pass to `InputManager` or set on `app.input_manager.bindings` at startup.
+
+---
+
+## Theme
+
+The engine ships with a complete default theme. Override what you need:
+
+```python
+from dataclasses import replace
+from pygame_engine.theme import get_theme, set_theme
+
+# Swap a single value
+theme = get_theme()
+new_theme = replace(theme,
+    button=replace(theme.button,
+        normal=replace(theme.button.normal, bg=(80, 40, 120))
+    )
+)
+set_theme(new_theme)
+```
+
+Or call `app.set_theme(my_theme)` at startup before the first frame.
+
+---
+
+## Assets
+
+```python
+# Images (cached, convert_alpha by default)
+logo  = app.assets.image("ui/logo.png")
+tiles = app.assets.spritesheet("sprites/tileset.png",
+                                frame_width=32, frame_height=32)
+
+# Fonts (cached by path + size)
+heading_font = app.assets.font("inter_bold.ttf", size=28)
+body_font    = app.assets.sysfont("segoeui,arial", size=18)
+
+# Sounds (None if missing — non-fatal)
+click_sfx = app.assets.sound("ui_click.wav")
+```
+
+Asset root defaults to `Path("assets")` — override via `AppConfig.asset_root`.
+Set `AppConfig.debug=True` to get placeholder surfaces for missing images.
+
+---
+
+## Audio
+
+```python
+# Music (streamed, one track at a time)
+app.audio.play_music(app.assets.asset_root / "music" / "theme.ogg")
+app.audio.stop_music(fade_out_ms=1000)
+app.audio.pause_music()
+app.audio.resume_music()
+
+# Sound effects
+click = app.assets.sound("ui_click.wav")
+app.audio.play_sfx(click)
+app.audio.play_sfx(click, volume=0.5)   # per-call volume multiplier
+
+# Volume (0.0 – 1.0)
+app.audio.master_volume = 0.8
+app.audio.music_volume  = 0.6
+app.audio.sfx_volume    = 1.0
+app.audio.muted         = False
+app.audio.toggle_mute()
+```
+
+---
+
+## Animation
+
+```python
+from pygame_engine.animation import Tween
+from pygame_engine.animation.easing import ease_out_back, ease_in_out_cubic
+
+# Slide a panel in from off-screen
+self._slide = Tween(start=-300, end=0, duration=0.4,
+                    easing=ease_out_back, auto_start=True)
+
+# In update():
+self._slide.update(dt)
+self._panel.rect.x = int(self._slide.value)
+
+# Fade something in
+self._fade = Tween(0.0, 1.0, 0.3, easing=ease_in_out_cubic, auto_start=True)
+self._fade.update(dt)
+surface.set_alpha(int(self._fade.value * 255))
+```
+
+---
+
+## Timers
+
+```python
+from pygame_engine.utils.timers import Timer, Cooldown
+
+# One-shot timer
+self._spawn_delay = Timer(3.0, auto_start=True)
+self._spawn_delay.update(dt)
+if self._spawn_delay.is_done:
+    self._spawn_enemy()
+
+# Repeating interval
+self._footstep = Cooldown(0.4, auto_start=True)
+self._footstep.update(dt)
+if self._footstep.fired:
+    app.audio.play_sfx(footstep_sfx)
+```
+
+---
+
+## Rules for game projects
+
+1. Use engine primitives first — only build custom widgets when the engine doesn't cover the need.
+2. Keep gameplay logic out of engine packages.
+3. Keep game-specific scenes, models, and systems in your game repo.
+4. If the same pattern appears across multiple projects, only then consider moving it into the engine.
+5. Update engine docs when engine contracts change; update game docs for game decisions.

@@ -200,3 +200,48 @@ If future engine use proves that a better direction exists, revise:
 1. the decision log
 2. the affected system docs
 3. this accepted-decisions document
+
+---
+
+### 18. Game Project Template
+A `game_template/` directory lives at the repo root alongside `pygame_engine/`.
+It is an immediately runnable skeleton that all future game projects start from.
+
+It provides: wired `main.py`, working main menu, stub game/pause/settings scenes,
+`game/actions.py` for combined engine+game actions, documented stub packages for
+models/systems/ui, and a README explaining the development workflow.
+
+**Rule:** copy `game_template/`, rename `MY_GAME`, run `python main.py`.
+
+---
+
+### 19. Events Package Removed
+The `events/` package (`event_bus.py`, `signals.py`) has been deleted.
+
+`Observable` in `state/observable.py` covers the reactive value use case.
+A proper pub/sub event bus will be built if and when a real game use case
+requires it — with the concrete pattern shaping the design.
+
+---
+
+### 20. StateStore Not Implemented
+`state/state_store.py` has been deleted. No generic key-value state store
+is implemented.
+
+`Observable` covers reactive state. `RuntimeFlags` covers engine boolean flags.
+A generic store has no concrete use case and creates dumping-ground risk.
+
+---
+
+### 21. Scene Transitions Are Opt-In
+`push`, `replace`, `pop`, and `clear_and_push` on `SceneManager` remain
+unchanged and transition-free.
+
+Transitions are opt-in via `push_with`, `replace_with`, and `pop_with`.
+Passing no transition is always valid and has zero overhead.
+
+---
+
+### 22. Physics Is Out of Scope
+`pygame_engine` will not include a physics engine. See `roadmap.md`.
+Games that need physics should use **pymunk** as a game-level dependency.

@@ -1,11 +1,16 @@
 """
 pygame_engine.scene
 
-Scene system: base contract, stack, and manager.
+Scene system: base contract, stack, manager, and transitions.
 
 Public API::
 
     from pygame_engine.scene import Scene, SceneManager, SceneStack
+    from pygame_engine.scene.transitions import (
+        FadeTransition,
+        SlideTransition,
+        CrossfadeTransition,
+    )
 """
 
 from pygame_engine.scene.scene import Scene

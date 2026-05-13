@@ -256,3 +256,43 @@ The engine should not assume that the entire runtime state store is always direc
 - Should backups be part of version one or later?
 - Should the engine provide dataclass serialization helpers by default?
 - Should migrations be engine-driven, game-driven, or hybrid?
+
+---
+
+## Locked Implementation Decisions
+
+### Atomic writes with .tmp rename
+**Decision:** `storage.write()` writes to a `.tmp` file first, then renames
+it to the final path. The previous save is moved to `.bak` before replacement.
+**Reason:** Prevents corrupt saves from power loss or crashes mid-write. The
+`.bak` provides one level of recovery.
+
+### Save envelope wraps game payload
+**Decision:** Every save file is a JSON envelope with engine-owned fields
+(`save_version`, `game_id`, `slot_id`, `created_at`, `updated_at`) and a
+single `payload` key owned by the game.
+**Reason:** Clean separation. The engine reads the envelope; the game reads
+the payload. Neither knows the details of the other's data.
+
+### `game_id` validated on load
+**Decision:** `SaveManager.load()` checks that the file's `game_id` matches
+the one the manager was configured with. Mismatches raise `ValueError`.
+**Reason:** Prevents accidentally loading saves from a different game when
+two projects share the same save directory.
+
+### `list_slots()` does not include payload
+**Decision:** Slot listing returns envelope metadata only — no `payload`.
+**Reason:** Payloads can be large. Listing all slots to show a save select
+screen should not load all game data.
+
+### Migration runner is optional
+**Decision:** `SaveManager` accepts an optional `MigrationRunner`. If None,
+loading a save at an older version raises `ValueError`.
+**Reason:** Simple games with no schema changes don't need migration
+infrastructure. The runner is opt-in.
+
+### `storage.py` functions are module-level, not a class
+**Decision:** `read`, `write`, `delete`, `exists`, `list_saves` are plain
+functions, not methods on a storage class.
+**Reason:** Storage has no state — it's pure file I/O. Functions are simpler
+and more testable than a class with no useful instance state.

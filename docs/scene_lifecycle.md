@@ -262,3 +262,38 @@ because replace is a lateral move (same stack depth), not a push.
 **Decision:** `transitions.py` is a documented stub. Transition support will
 be added after `Scene`, `SceneManager`, `Widget`, and `Application` are stable
 and exercised by real examples.
+
+---
+
+## Scene Transitions
+
+Transitions are visual effects that play during a scene change. The new
+scene is active immediately (receiving updates and events normally) while
+the transition animates between the outgoing frame and the live incoming scene.
+
+### Available transitions
+
+| Class | Effect |
+|---|---|
+| `FadeTransition` | Fade through a solid colour (default black) |
+| `SlideTransition` | Slide scenes in/out from an edge |
+| `CrossfadeTransition` | Dissolve directly between scenes |
+
+### Usage
+
+```python
+from pygame_engine.scene.transitions import FadeTransition, SlideTransition
+
+# Replace with fade through black
+app.scene_manager.replace_with(GameplayScene(app), FadeTransition(0.4))
+
+# Push overlay sliding in from top
+app.scene_manager.push_with(PauseScene(app), SlideTransition(0.3, "down"))
+
+# Pop back with crossfade
+app.scene_manager.pop_with(CrossfadeTransition(0.25))
+```
+
+The non-transition versions (`push`, `replace`, `pop`, `clear_and_push`)
+remain unchanged. Transitions are always opt-in.
+

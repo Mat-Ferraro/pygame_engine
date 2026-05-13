@@ -161,3 +161,36 @@ They should not:
 - Should the inspector be text-based, visual, or both?
 - Should debug overlays be composable modules?
 - Should log history persist across scene changes?
+
+---
+
+## Locked Implementation Decisions
+
+### All four debug modules implemented; console is display-only in v1
+**Decision:** `debug_log`, `overlay`, `inspector`, `console` are all
+implemented. The console is display-only — no command input in v1.
+**Reason:** Interactive console requires text input mode which isn't built
+yet. A read-only log tail covers the real v1 need.
+
+### Overlay and console share the `show_overlay` flag
+**Decision:** Both render when `flags.show_overlay` is True. F1 toggles
+this flag. A separate console toggle can be split out later if needed.
+**Reason:** Simplest model that covers the real use case.
+
+### Overlay renders in `Application._loop` after scenes, before flip
+**Decision:** `DebugOverlay.render()` and `DebugConsole.render()` are
+called by `Application` after scene rendering. They are not scene widgets.
+**Reason:** Debug tools must always appear on top of everything. Putting
+them in `Application._loop` rather than the scene tree guarantees this.
+
+### Inspector writes to debug_log, not stdout
+**Decision:** `Inspector.dump()` calls `log()` — output appears in the
+debug console and log history, not printed to stdout.
+**Reason:** Keeps debug output in one place and makes it accessible from
+the on-screen console.
+
+### Debug tools check their own flags — callers don't need to
+**Decision:** `DebugOverlay.render()` and `DebugConsole.render()` check
+`flags.show_overlay` internally and return immediately if False.
+**Reason:** Callers (Application) can always call render() unconditionally.
+No `if flags.debug:` guards needed at the call site.

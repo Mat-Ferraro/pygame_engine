@@ -23,6 +23,7 @@ from typing import Callable
 
 import pygame
 
+from pygame_engine.graphics.draw_utils import draw_surface_style
 from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.ui.text.label import Label
@@ -56,6 +57,7 @@ class Button(Widget):
 
         self.on_click: Callable[[], None] | None = on_click
         self._pressed_inside: bool = False
+        self.focusable: bool = True
 
         theme = get_theme()
         self._label = Label(
@@ -84,6 +86,12 @@ class Button(Widget):
     # ── Event handling ────────────────────────────────────────────────────────
 
     def _handle_event_widget(self, event: pygame.event.Event) -> bool:
+        # Keyboard activation when focused
+        if event.type == pygame.KEYDOWN and self.focused:
+            if event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_KP_ENTER):
+                self._fire_click()
+                return True
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 self._pressed_inside = True
@@ -122,13 +130,12 @@ class Button(Widget):
         theme = get_theme()
         style = self._resolve_style(theme)
 
-        pygame.draw.rect(surface, style.bg, self.rect,
-                         border_radius=style.radius)
-        if style.border_width > 0:
-            pygame.draw.rect(surface, style.border, self.rect,
-                             width=style.border_width,
-                             border_radius=style.radius)
-
+        draw_surface_style(surface, self.rect, style)
+        # Focus ring
+        if self.focused and self.enabled:
+            pygame.draw.rect(surface, theme.colours.border_focus,
+                             self.rect.inflate(4, 4), width=2,
+                             border_radius=style.radius + 2)
         self._label.render(surface)
 
     def _resolve_style(self, theme: object) -> object:  # type: ignore[return]

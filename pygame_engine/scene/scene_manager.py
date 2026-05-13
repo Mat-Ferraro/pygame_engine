@@ -11,6 +11,7 @@ Responsibilities
 ----------------
 - Push / pop / replace scenes with correct lifecycle hook calls
 - Delegate frame methods (handle_event, update, render) to SceneStack
+- Manage optional scene transition effects
 - Prevent lifecycle hook calls from being scattered across the codebase
 
 Non-responsibilities
@@ -32,46 +33,41 @@ class SceneManager:
     """
     Coordinates scene flow and owns the scene stack.
 
-    All scene transitions go through SceneManager so that lifecycle hooks
-    are always called in the correct order. SceneStack handles frame
-    traversal policy; SceneManager handles the transition semantics.
+    All scene changes go through SceneManager so that lifecycle hooks
+    are always called in the correct order. Optional transitions can be
+    passed to ``push_with``, ``replace_with``, and ``pop_with``.
 
     Usage::
 
         manager = SceneManager()
-        manager.push(MainMenuScene())   # called once at startup by Application
+        manager.push(MainMenuScene())   # no transition
+
+        # With transition:
+        from pygame_engine.scene.transitions import FadeTransition
+        manager.replace_with(GameplayScene(), FadeTransition(duration=0.4))
 
         # Each frame (called by Application):
         manager.handle_event(event)
         manager.update(dt)
         manager.render(surface)
-
-        # From inside a scene:
-        app.scene_manager.push(PauseMenuScene())
-        app.scene_manager.pop()
-        app.scene_manager.replace(GameplayScene())
     """
 
     def __init__(self) -> None:
-        self._stack: SceneStack = SceneStack()
+        self._stack:      SceneStack = SceneStack()
+        self._transition: object | None = None   # active Transition | None
+        self._trans_surf: pygame.Surface | None = None  # temp render surface
 
-    # ── Scene transitions ─────────────────────────────────────────────────────
+    # ── Scene changes — no transition ─────────────────────────────────────────
 
     def push(self, scene: Scene) -> None:
         """
         Push a new scene onto the stack and make it active.
 
-        Lifecycle hooks called:
-          - ``on_pause()`` on the previously active scene (if any)
-          - ``on_enter()`` on the new scene
-
-        Args:
-            scene: The scene to push.
+        Lifecycle hooks: ``on_pause()`` on previous, ``on_enter()`` on new.
         """
         current = self._stack.top
         if current is not None:
             current.on_pause()
-
         self._stack.push(scene)
         scene.on_enter()
 
@@ -79,110 +75,155 @@ class SceneManager:
         """
         Remove the top scene and resume the one below it (if any).
 
-        Lifecycle hooks called:
-          - ``on_exit()`` on the removed scene
-          - ``on_resume()`` on the scene that becomes active (if any)
+        Lifecycle hooks: ``on_exit()`` on removed, ``on_resume()`` on resumed.
 
         Returns:
-            The scene that was removed, or None if the stack was empty.
+            The removed scene, or None if the stack was empty.
         """
         removed = self._stack.pop()
         if removed is not None:
             removed.on_exit()
-
         resumed = self._stack.top
         if resumed is not None:
             resumed.on_resume()
-
         return removed
 
     def replace(self, scene: Scene) -> Scene | None:
         """
-        Replace the current top scene with a new one.
+        Replace the current top scene with a new one (lateral move).
 
-        Equivalent to pop() followed by push(), but keeps it as one
-        intentional operation with clear semantics. The scene below the
-        replaced scene is NOT paused or resumed — replace() is a lateral
-        move, not a stack depth change.
-
-        Lifecycle hooks called:
-          - ``on_exit()`` on the removed scene
-          - ``on_enter()`` on the new scene
-
-        Args:
-            scene: The scene to push in place of the current top.
+        Lifecycle hooks: ``on_exit()`` on removed, ``on_enter()`` on new.
+        The scene below is NOT paused or resumed.
 
         Returns:
-            The scene that was replaced, or None if the stack was empty.
+            The replaced scene, or None if the stack was empty.
         """
         removed = self._stack.pop()
         if removed is not None:
             removed.on_exit()
-
         self._stack.push(scene)
         scene.on_enter()
-
         return removed
 
     def clear_and_push(self, scene: Scene) -> None:
         """
-        Exit and remove all current scenes, then push a fresh one.
+        Exit all scenes then push a fresh one.
 
-        Useful for hard transitions like returning to the main menu from
-        deep inside a gameplay session.
-
-        Lifecycle hooks called:
-          - ``on_exit()`` on every removed scene, topmost first
-          - ``on_enter()`` on the new scene
-
-        Args:
-            scene: The scene to push after clearing the stack.
+        Lifecycle hooks: ``on_exit()`` on every removed (topmost first),
+        ``on_enter()`` on the new scene.
         """
-        removed_scenes = self._stack.clear()
-        for removed in removed_scenes:
+        for removed in self._stack.clear():
             removed.on_exit()
-
         self._stack.push(scene)
         scene.on_enter()
+
+    # ── Scene changes — with transition ───────────────────────────────────────
+
+    def push_with(
+        self,
+        scene:      Scene,
+        transition: object,
+        surface:    pygame.Surface | None = None,
+    ) -> None:
+        """
+        Push a scene with a visual transition effect.
+
+        The outgoing scene's current frame is captured, the scene change
+        happens immediately, and the transition animates between the two.
+
+        Args:
+            scene:      The scene to push.
+            transition: A ``Transition`` instance (Fade, Slide, Crossfade…).
+            surface:    The display surface (used for capture). If None,
+                        uses ``pygame.display.get_surface()``.
+        """
+        capture = self._capture_frame(surface)
+        self.push(scene)
+        self._start_transition(transition, capture)
+
+    def replace_with(
+        self,
+        scene:      Scene,
+        transition: object,
+        surface:    pygame.Surface | None = None,
+    ) -> Scene | None:
+        """
+        Replace the current scene with a visual transition.
+
+        Args:
+            scene:      The replacement scene.
+            transition: A ``Transition`` instance.
+            surface:    The display surface for capture.
+
+        Returns:
+            The replaced scene.
+        """
+        capture  = self._capture_frame(surface)
+        removed  = self.replace(scene)
+        self._start_transition(transition, capture)
+        return removed
+
+    def pop_with(
+        self,
+        transition: object,
+        surface:    pygame.Surface | None = None,
+    ) -> Scene | None:
+        """
+        Pop the top scene with a visual transition.
+
+        Args:
+            transition: A ``Transition`` instance.
+            surface:    The display surface for capture.
+
+        Returns:
+            The removed scene.
+        """
+        capture = self._capture_frame(surface)
+        removed = self.pop()
+        self._start_transition(transition, capture)
+        return removed
 
     # ── Frame delegation ──────────────────────────────────────────────────────
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """
-        Route an event through the scene stack.
-
-        Delegates directly to SceneStack, which applies the blocking policy.
-
-        Args:
-            event: The pygame event to route.
-
-        Returns:
-            True if any scene consumed the event.
-        """
+        """Route an event through the scene stack (blocking policy applies)."""
         return self._stack.handle_event(event)
 
     def update(self, dt: float) -> None:
-        """
-        Update the scene stack for this frame.
-
-        Delegates directly to SceneStack, which applies the blocking policy.
-
-        Args:
-            dt: Delta time in seconds.
-        """
+        """Update the scene stack and advance any active transition."""
         self._stack.update(dt)
+
+        if self._transition is not None:
+            done = self._transition.update(dt)
+            if done:
+                self._transition = None
+                self._trans_surf  = None
 
     def render(self, surface: pygame.Surface) -> None:
         """
-        Render the scene stack onto the provided surface.
+        Render the scene stack, compositing any active transition.
 
-        Delegates directly to SceneStack, which applies the blocking policy
-        and bottom-up render order.
+        When a transition is active:
+        1. The incoming scene renders to a temporary surface.
+        2. The transition composites the capture + temp onto ``surface``.
 
-        Args:
-            surface: The surface to render onto.
+        When no transition is active: delegates directly to SceneStack.
         """
-        self._stack.render(surface)
+        if self._transition is None:
+            self._stack.render(surface)
+            return
+
+        # Ensure temp surface matches display size
+        w, h = surface.get_size()
+        if self._trans_surf is None or self._trans_surf.get_size() != (w, h):
+            self._trans_surf = pygame.Surface((w, h))
+
+        # Render incoming scene onto temp surface
+        self._trans_surf.fill((0, 0, 0))
+        self._stack.render(self._trans_surf)
+
+        # Let transition composite everything onto the display surface
+        self._transition.render(surface, self._trans_surf)
 
     # ── Properties ────────────────────────────────────────────────────────────
 
@@ -195,3 +236,33 @@ class SceneManager:
     def is_empty(self) -> bool:
         """True if no scenes are on the stack."""
         return self._stack.is_empty
+
+    @property
+    def is_transitioning(self) -> bool:
+        """True while a visual transition is playing."""
+        return self._transition is not None
+
+    # ── Internal ──────────────────────────────────────────────────────────────
+
+    def _capture_frame(
+        self,
+        surface: pygame.Surface | None,
+    ) -> pygame.Surface:
+        """Capture a copy of the current display surface."""
+        src = surface or pygame.display.get_surface()
+        if src is None:
+            # Fallback: return a blank surface if display isn't ready
+            return pygame.Surface((1, 1))
+        capture = pygame.Surface(src.get_size())
+        capture.blit(src, (0, 0))
+        return capture
+
+    def _start_transition(
+        self,
+        transition: object,
+        capture:    pygame.Surface,
+    ) -> None:
+        """Start a transition with the given outgoing frame capture."""
+        self._transition = transition
+        self._trans_surf  = None
+        transition.start(capture)  # type: ignore[attr-defined]

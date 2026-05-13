@@ -170,3 +170,39 @@ Do not use state writes as a substitute for meaningful notifications when subscr
 - Should observables be standalone values or store-backed?
 - Should state changes emit events automatically?
 - How much state should the app expose to scenes directly?
+
+---
+
+## Locked Implementation Decisions
+
+### `state_store.py` is not implemented
+**Decision:** `state_store.py` remains an empty stub. No generic key-value
+state store is implemented.
+**Reason:** The doc's own warning still holds — a generic store is a
+dumping ground waiting to happen. Both `Observable` and `RuntimeFlags`
+cover the real engine-level state needs without a general store.
+
+### `Observable` uses callback-list notification, not the event bus
+**Decision:** `Observable` maintains its own `_listeners` list and calls
+them directly. It does not use `events/event_bus.py`.
+**Reason:** Observable is a low-level primitive. Making it depend on the
+event bus would create a circular dependency risk and add indirection with
+no benefit at this scale.
+
+### `RuntimeFlags` is a typed class with named attributes, not a dict
+**Decision:** Flags are named attributes (`flags.debug`, `flags.show_fps`)
+not dict keys (`flags["debug"]`).
+**Reason:** Named attributes give autocomplete, prevent typos, and make the
+available flags self-documenting. A dict would be opaque.
+
+### Module-level `flags` singleton, reset by Application on startup
+**Decision:** A module-level `flags: RuntimeFlags` instance is provided.
+`Application._startup()` calls `flags.reset()` then applies `config.debug`.
+**Reason:** Allows any module to import `flags` and read the current state
+without needing a reference to `Application`. Reset on startup ensures a
+clean state every run.
+
+### Game projects subclass RuntimeFlags for their own flags
+**Decision:** Game-specific flags belong in a subclass of `RuntimeFlags`
+in the game project, not as additions to the engine class.
+**Reason:** Keeps the engine flags minimal and generic.

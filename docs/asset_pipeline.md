@@ -201,3 +201,47 @@ That belongs to `graphics`, `scene`, or higher-level systems.
 - Should engine and project asset roots both be supported immediately?
 - Should placeholder assets be generated automatically in debug mode?
 - Should asset manifests exist later for preload control?
+
+---
+
+## Locked Implementation Decisions
+
+### `AssetLoader` is a class instance owned by `Application`
+**Decision:** `AssetLoader` is instantiated in `Application._startup()` using
+`AppConfig.asset_root` and `AppConfig.debug`. Accessible via `app.assets`.
+
+**Reason:** The loader holds cache state and needs the configured root path.
+A class instance is the right model — same reasoning as `InputManager`.
+
+### No cache invalidation in v1
+**Decision:** Assets load once and cache for the session lifetime.
+`clear_cache()` exists for edge cases but is not called automatically.
+
+**Reason:** Cache invalidation adds complexity with no v1 use case driving it.
+If a reload is needed, restart the application.
+
+### Missing asset behaviour by type
+- **Images:** raises `FileNotFoundError` by default. In debug mode
+  (`AppConfig.debug=True`), returns a magenta placeholder surface with a
+  cross so missing assets are visually obvious.
+- **Fonts:** always raises `FileNotFoundError` — font path errors are
+  configuration mistakes that must be fixed immediately.
+- **Sounds:** logs a `warnings.warn` and returns `None` — audio is
+  non-fatal. `AudioManager` handles the None case.
+
+### Path resolution tries subdirectory first, then root
+**Decision:** `image("button.png")` tries `asset_root/images/button.png`
+first, then `asset_root/button.png`. Same pattern for sounds and fonts.
+
+**Reason:** Encourages the conventional folder layout while still allowing
+flat asset roots during early development.
+
+### No physics engine in pygame_engine
+**Decision:** Physics is explicitly out of scope for `pygame_engine`.
+
+**Reason:** Physics is deep, specialised, and genre-specific. A platformer,
+top-down RPG, and billiards game all need fundamentally different physics.
+`pygame_engine` provides the runtime, UI, input, and rendering infrastructure.
+Games that need physics should depend on **pymunk** (the standard pygame
+physics library) directly as a game-level dependency, not an engine one.
+This is noted in the roadmap.

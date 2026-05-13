@@ -30,6 +30,11 @@ from __future__ import annotations
 import pygame
 
 from pygame_engine.app.config import AppConfig
+from pygame_engine.assets.asset_loader import AssetLoader
+from pygame_engine.debug.console import DebugConsole
+from pygame_engine.debug.overlay import DebugOverlay
+from pygame_engine.state.runtime_flags import flags as _runtime_flags
+from pygame_engine.audio.audio_manager import AudioManager
 from pygame_engine.input.input_manager import InputManager
 from pygame_engine.theme.runtime import get_theme, set_theme
 from pygame_engine.theme.defaults import Theme
@@ -74,6 +79,10 @@ class Application:
         # here once those modules are written.
         self._scene_manager: SceneManager | None = None
         self._input_manager: InputManager | None = None
+        self._assets: AssetLoader | None = None
+        self._audio: AudioManager | None = None
+        self._debug_overlay: DebugOverlay = DebugOverlay()
+        self._debug_console: DebugConsole = DebugConsole()
 
     # ── Public entry point ────────────────────────────────────────────────────
 
@@ -125,10 +134,19 @@ class Application:
         pygame.display.set_caption(self._config.title)
 
         self._input_manager = InputManager()
+        self._assets = AssetLoader(
+            self._config.asset_root,
+            debug=self._config.debug,
+        )
         # Theme is globally accessible via get_theme(); no per-app instance needed.
         # Projects can call set_theme() before or after run() to customise.
         # TODO: initialise AssetLoader
-        # TODO: initialise AudioManager
+        self._audio = AudioManager()
+
+        # Reset runtime flags to defaults, then apply config.debug
+        _runtime_flags.reset()
+        if self._config.debug:
+            _runtime_flags.enable_debug_all()
         # TODO: initialise debug tools if config.debug
 
         self._scene_manager = SceneManager()
@@ -181,7 +199,12 @@ class Application:
                 self._scene_manager.render(self._display_surface)
 
             # 8. Render debug overlays
-            # TODO: debug overlay render
+            self._debug_overlay.render(
+                self._display_surface,
+                self._clock,
+                self._scene_manager,
+            )
+            self._debug_console.render(self._display_surface)
 
             # 9. Present
             pygame.display.flip()
@@ -202,7 +225,8 @@ class Application:
             # Pop all scenes cleanly so on_exit() is called on each.
             while not self._scene_manager.is_empty:
                 self._scene_manager.pop()
-        # TODO: shutdown AudioManager
+        if self._audio is not None:
+            self._audio.shutdown()
         # TODO: shutdown debug tools
 
         pygame.quit()
@@ -238,7 +262,16 @@ class Application:
                 return
 
         # 5. Global debug shortcuts
-        # TODO: if self._config.debug: handle debug shortcuts
+        if self._input_manager is not None:
+            from pygame_engine.input import actions as _actions
+            from pygame_engine.state.runtime_flags import flags as _flags
+            if self._input_manager.was_action_pressed(_actions.DEBUG_TOGGLE):
+                _flags.toggle('show_overlay')
+                return
+            if self._input_manager.was_action_pressed(_actions.INSPECTOR_TOGGLE):
+                from pygame_engine.debug.inspector import Inspector
+                Inspector().dump(self._scene_manager)
+                return
 
     # ── Display helpers ───────────────────────────────────────────────────────
 
@@ -316,6 +349,34 @@ class Application:
                 "scene_manager is not available before Application.run() is called."
             )
         return self._scene_manager
+
+    @property
+    def audio(self) -> AudioManager:
+        """
+        The audio manager.
+
+        Only valid after ``run()`` has been called.
+        Raises ``RuntimeError`` if accessed before startup.
+        """
+        if self._audio is None:
+            raise RuntimeError(
+                "audio is not available before Application.run() is called."
+            )
+        return self._audio
+
+    @property
+    def assets(self) -> AssetLoader:
+        """
+        The asset loader.
+
+        Only valid after ``run()`` has been called.
+        Raises ``RuntimeError`` if accessed before startup.
+        """
+        if self._assets is None:
+            raise RuntimeError(
+                "assets is not available before Application.run() is called."
+            )
+        return self._assets
 
     @property
     def theme(self) -> Theme:
