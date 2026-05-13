@@ -146,6 +146,7 @@ def run() -> None:
         title="pygame_engine — spine example",
         width=1280,
         height=720,
+        resizable=True,
         target_fps=60,
     )
     app = Application(config)

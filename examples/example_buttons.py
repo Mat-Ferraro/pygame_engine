@@ -22,7 +22,7 @@ from pygame_engine.input import actions
 from pygame_engine.layout import anchor, column
 from pygame_engine.scene import Scene
 from pygame_engine.theme.runtime import get_theme
-from pygame_engine.ui import Button, Label, Panel, Stack
+from pygame_engine.ui import Button, Label, Panel
 
 
 class ButtonExampleScene(Scene):
@@ -85,8 +85,14 @@ class ButtonExampleScene(Scene):
                      colour=theme.colours.text_secondary,
                      align="center")
 
-        # ── Root: Stack used as a transparent grouping container ──────────────
-        root = Stack(pygame.Rect(screen))
+        # ── Root: a panel that holds everything ───────────────────────────────
+        root = Panel(pygame.Rect(screen))
+        root.visible = True
+
+        # Panel has no background by default when used as an invisible root —
+        # override by not drawing the background (we use root purely as a group)
+        root._draw_background = lambda s: None  # type: ignore[method-assign]
+
         root.add(panel)
         root.add(title)
         root.add(btn_disabled)
@@ -125,6 +131,7 @@ def run() -> None:
         title="pygame_engine — panel & button example",
         width=1280,
         height=720,
+        resizable=True,
         target_fps=60,
     )
     app = Application(config)

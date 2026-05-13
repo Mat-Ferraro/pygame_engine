@@ -1,0 +1,28 @@
+{
+    "_comment": "Game theme override file. Only keys you want to change from engine defaults.",
+
+    "colours": {
+        "bg_dark":       [12, 12, 18],
+        "bg_base":       [20, 20, 28],
+        "bg_raised":     [28, 32, 44],
+        "text":          [228, 228, 235],
+        "text_secondary":[155, 155, 172]
+    },
+
+    "typography": {
+        "family": "segoeui,helvetica,arial",
+        "md": 18
+    },
+
+    "button": {
+        "normal":  {"bg": [50, 85, 165], "radius": 6},
+        "hovered": {"bg": [70, 115, 205]},
+        "pressed": {"bg": [35, 65, 130]},
+        "padding": 10
+    },
+
+    "panel": {
+        "surface": {"bg": [28, 32, 44], "border": [55, 62, 85]},
+        "padding": 16
+    }
+}

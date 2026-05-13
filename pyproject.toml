@@ -1,31 +1,4 @@
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "pygame_engine"
-version = "1.3.0"
-description = "A lightweight reusable framework built on pygame"
-requires-python = ">=3.11"
-dependencies = [
-    "pygame-ce>=2.4",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8",
-    "pytest-cov",
-]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["pygame_engine*"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-
-[tool.mypy]
-python_version = "3.11"
-strict = false
-warn_unused_ignores = true
-warn_return_any = true
+# THIS FILE SHOULD BE DELETED.
+# It is a stale duplicate of the root pyproject.toml.
+# Only the root-level pyproject.toml is used by pip.
+# Delete this file: pygame_engine/pyproject.toml

@@ -20,6 +20,8 @@ intentional, preventing random feature drift.
 | Phase 9 — Game Systems           | ✅ Complete | Slider, Checkbox, RadioGroup, Camera, Tilemap, Dialogue |
 | Phase 10 — Polish & Utilities    | ✅ Complete | Screen manager, responsive layout, sprite atlas, localisation |
 | Phase 11 — Game AI & Systems     | ✅ Complete | Pathfinding, animation state machine, positional audio, 2D lighting |
+| Phase 12 — Input & Controllers   | ✅ Complete | Key remapping, controller support, binding persistence |
+| Phase 13 — Theming & Rich Text   | ✅ Complete | File-driven JSON theming, live reload, RichLabel with markup |
 
 ---
 
@@ -146,6 +148,56 @@ String key → translated string lookup. Engine-agnostic.
 |------|--------|-------|
 | `Light` | ✅ Done | World-position light with radius, colour, intensity, flicker |
 | `LightingSystem` | ✅ Done | Dark overlay with radial gradient cutouts; camera-aware |
+
+---
+
+## Phase 12 — Input & Controllers ✅ Complete
+
+### Phase 12a — Key Remapping ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `InputManager.remap()` | ✅ Done | Rebind any action to a new key at runtime |
+| `InputManager.remap_controller()` | ✅ Done | Rebind controller buttons |
+| `get_key_for_action()` / `get_button_for_action()` | ✅ Done | Query current binding |
+| `bindings_to_dict()` / `bindings_from_dict()` | ✅ Done | Serialise for persistence |
+| `reset_to_defaults()` | ✅ Done | Restore default bindings |
+| `key_name()` / `controller_button_name()` | ✅ Done | Human-readable names for UI |
+| Settings scene Controls tab | ✅ Done | Live remapping UI with persistence |
+
+### Phase 12b — Controller Support ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Joystick detection | ✅ Done | Auto-detects on `JOYDEVICEADDED`; hot-plug support |
+| Button → action mapping | ✅ Done | Same action strings as keyboard |
+| Axis → action mapping | ✅ Done | Left stick and D-pad → NAV_* actions with threshold |
+| Dead zone filtering | ✅ Done | Configurable via `ControllerConfig` |
+| `ControllerConfig` | ✅ Done | Dead zone, axis indices, threshold |
+| Raw axis access | ✅ Done | `get_axis(joy_id, axis)` for analogue movement |
+
+---
+
+## Phase 13 — Theming & Rich Text ✅ Complete
+
+### Phase 13a — File-driven Theming ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `theme_from_file(path)` | ✅ Done | Load JSON theme override file; partial — only override what you need |
+| `reload_theme_file(path)` | ✅ Done | Load and immediately activate — hot-reload during development |
+| `theme_to_dict(theme)` | ✅ Done | Serialise active theme to JSON-compatible dict |
+| JSON format | ✅ Done | Colours as `[r,g,b]`, all keys optional, deep merge over defaults |
+| Sample `assets/theme.json` | ✅ Done | Starter file in game template |
+
+### Phase 13b — Rich Text ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `RichLabel` widget | ✅ Done | BBCode markup: `[b]`, `[i]`, `[color=#rrggbb]`, `[size=N]` |
+| `parse_markup()` | ✅ Done | Standalone parser — returns list of styled spans |
+| Font caching | ✅ Done | Per-instance font variant cache; no reallocation between frames |
+| Graceful degradation | ✅ Done | Unknown tags rendered as literal text, never crash |
 
 ---
 

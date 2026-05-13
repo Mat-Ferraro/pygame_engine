@@ -205,6 +205,7 @@ def run() -> None:
         title="pygame_engine — particles",
         width=1280,
         height=720,
+        resizable=True,
         target_fps=60,
     )
     app = Application(config)

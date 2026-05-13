@@ -1,6 +1,4 @@
 """
-examples/example_layout.py
-
 Demonstrates anchor, row, column, and grid layout helpers.
 """
 
@@ -128,6 +126,7 @@ def run() -> None:
         width=1280,
         height=720,
         target_fps=60,
+        resizable=True,
     )
     app = Application(config)
     app.run(LayoutExampleScene(app))

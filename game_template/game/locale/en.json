@@ -9,17 +9,17 @@
     "pause.settings": "Settings",
     "pause.quit":     "Quit to Menu",
 
-    "settings.title":   "Settings",
-    "settings.quality": "Quality",
-    "settings.volume":  "Volume",
-    "settings.display": "Display",
+    "settings.title":      "Settings",
+    "settings.quality":    "Quality",
+    "settings.volume":     "Volume",
+    "settings.display":    "Display",
     "settings.fullscreen": "Fullscreen",
     "settings.show_fps":   "Show FPS",
-    "settings.back":    "Back",
+    "settings.back":       "Back",
 
-    "hud.score": "Score: {value}",
-    "hud.level": "Level {level}",
-    "hud.lives": "{count} lives",
+    "hud.score":  "Score: {value}",
+    "hud.level":  "Level {level}",
+    "hud.lives":  "{count} lives",
     "hud.health": "HP: {current}/{max}",
 
     "item.coin": {

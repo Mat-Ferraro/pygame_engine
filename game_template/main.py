@@ -1,6 +1,4 @@
 """
-main.py
-
 Entry point for MY_GAME.
 
 This file wires together the engine configuration and launches the
@@ -15,6 +13,7 @@ Steps to customise:
 5. Replace MainMenuScene with your actual first scene if needed
 """
 
+import sys
 from pathlib import Path
 
 from pygame_engine.app import Application, AppConfig
@@ -40,8 +39,14 @@ def main() -> None:
     load_locales()   # load all locale files before the first frame
     config = _build_config()
     app    = Application(config)
-    with crash_guard(Path("crash.log")):
+
+    crash_log = Path("crash.log")
+    with crash_guard(crash_log):
         app.run(MainMenuScene(app))
+
+    # If a crash log was written, print its location so it's not silent
+    if crash_log.exists():
+        print(f"\nCrash report written to: {crash_log.resolve()}", file=sys.stderr)
 
 
 if __name__ == "__main__":

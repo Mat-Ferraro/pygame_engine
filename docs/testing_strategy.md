@@ -1,5 +1,3 @@
-## Purpose
-
 Testing supports confidence in reusable engine behaviour without turning
 the project into a test-only exercise.
 
@@ -98,6 +96,7 @@ returns an 800×600 surface for render smoke tests.
 | `test_persistence.py` | Storage, serializers, migrations, SaveManager slot management |
 | `test_positional_audio.py` | Listener, distance falloff, stereo panning, base volume scaling |
 | `test_progress_bar.py` | Value clamping, fill rect math, directions |
+| `test_rich_label.py` | `RichLabel` widget, `parse_markup()`, hex parser, font cache |
 | `test_radio_group.py` | Selection, on_change, keyboard navigation |
 | `test_rects.py` | inset, snap_to_grid, clamp_inside, split helpers |
 | `test_responsive_layout.py` | FlexRow/FlexColumn weights/fixed/spacing, AnchorLayout rules |
@@ -109,6 +108,7 @@ returns an 800×600 surface for render smoke tests.
 | `test_stack.py` | Child management, event routing order, hover update |
 | `test_state.py` | Observable subscribe/notify/unsubscribe, RuntimeFlags toggle/reset |
 | `test_text_block.py` | Dirty flag, text wrapping, cache rebuild |
+| `test_theme_loader.py` | `theme_from_file()`, partial override, roundtrip, `reload_theme_file()`, `theme_to_dict()` |
 | `test_tilemap.py` | Tileset slicing, TileLayer grid, Tilemap collision/rendering |
 | `test_timers.py` | Timer progress/elapsed/remaining, Cooldown carry-over |
 | `test_transitions.py` | Progress, is_done, direction validation, SceneManager integration |
@@ -134,3 +134,4 @@ Low-value: simple pass-through wrappers, purely visual appearance, demo scripts.
 1. Test behaviour, not implementation details.
 2. Add a test when a bug is fixed so it stays fixed.
 3. No feature is complete until code, tests, examples, and docs all agree.
+========================================================================================================================

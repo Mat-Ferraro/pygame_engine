@@ -71,7 +71,7 @@ def _make_map():
         solid[r][0] = solid[r][COLS-1] = 2
         ground[r][0] = ground[r][COLS-1] = 2
 
-    # Internal walls
+    # Vertical walls
     wall_positions = [
         (5, 3, 8), (5, 5, 8), (12, 2, 5), (18, 8, 12),
         (8, 12, 11), (20, 14, 17), (3, 15, 18),
@@ -81,6 +81,21 @@ def _make_map():
             if 0 < col < COLS-1 and 0 < r < ROWS-1:
                 solid[r][col] = 2
                 ground[r][col] = 2
+
+    # Horizontal floor platforms — give the player surfaces to land on
+    floor_positions = [
+        (1,  14, COLS-1),   # main floor near bottom
+        (1,   8, 10),       # left mid platform
+        (14,  8, 18),       # centre mid platform
+        (22,  8, COLS-1),   # right mid platform
+        (6,   4, 12),       # upper left platform
+        (19,  4, COLS-1),   # upper right platform
+    ]
+    for c1, row, c2 in floor_positions:
+        for c in range(c1, c2):
+            if 0 < c < COLS-1 and 0 < row < ROWS-1:
+                solid[row][c] = 2
+                ground[row][c] = 2
 
     ts   = _make_tileset()
     tmap = Tilemap(ts, TILE, TILE,
@@ -179,7 +194,7 @@ class Phase11Scene(Scene):
         self._camera.set_world_bounds(self._tmap.world_rect)
 
         # Player
-        self._player = pygame.Rect(TILE * 2, TILE * 2, 24, 32)
+        self._player = pygame.Rect(TILE * 2, TILE * 12, 24, 32)
         self._vx     = 0.0
         self._vy     = 0.0
         self._on_ground = False
@@ -268,24 +283,48 @@ class Phase11Scene(Scene):
 
         if inp.is_action_down(actions.NAV_LEFT):  self._vx = -speed
         if inp.is_action_down(actions.NAV_RIGHT): self._vx =  speed
-        if inp.was_action_pressed(actions.CONFIRM) and self._on_ground:
+        if inp.was_key_pressed(pygame.K_SPACE) and self._on_ground:
             self._vy = -460.0; jumping = True
 
+        # Gravity
         self._vy = min(self._vy + 750 * dt, 800)
+
+        # Horizontal movement + collision
         self._player.x += int(self._vx * dt)
         for t in self._tmap.get_colliding_tiles(self._player):
             if self._vx > 0: self._player.right = t.left
             elif self._vx < 0: self._player.left = t.right
             self._vx = 0
 
+        # Vertical movement + collision
+        # Clamp to one tile per frame to prevent tunnelling.
         self._on_ground = False
-        self._player.y += int(self._vy * dt)
+        move_y = max(-TILE, min(TILE, int(self._vy * dt)))
+        self._player.y += move_y
         for t in self._tmap.get_colliding_tiles(self._player):
-            if self._vy > 0:
-                self._player.bottom = t.top; self._on_ground = True
-            elif self._vy < 0:
+            overlap_from_top    = self._player.bottom - t.top
+            overlap_from_bottom = t.bottom - self._player.top
+            if overlap_from_top <= overlap_from_bottom:
+                self._player.bottom = t.top
+                self._on_ground = True
+                self._vy = 0
+            else:
                 self._player.top = t.bottom
-            self._vy = 0
+                self._vy = 0
+
+        # Ground probe: nudge one pixel down to check if floor is directly
+        # below. This catches the case where the player is sitting exactly
+        # on a tile boundary (move_y rounded to 0) and gravity hasn't moved
+        # them into contact yet.
+        if not self._on_ground and self._vy >= 0:
+            self._player.y += 1
+            for t in self._tmap.get_colliding_tiles(self._player):
+                if self._player.bottom - t.top <= t.bottom - self._player.top:
+                    self._player.bottom = t.top
+                    self._on_ground = True
+                    self._vy = 0
+            if not self._on_ground:
+                self._player.y -= 1   # undo probe if no floor found
 
         # State machine
         self._sm.update(dt, params={
@@ -335,7 +374,7 @@ class Phase11Scene(Scene):
 
 def run() -> None:
     app = Application(AppConfig(
-        title="pygame_engine — Phase 11 demo",
+        title="pygame_engine — platformer",
         width=1280, height=720,
     ))
     app.run(Phase11Scene(app))

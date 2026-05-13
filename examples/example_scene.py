@@ -1,6 +1,4 @@
 """
-examples/example_scene.py
-
 Demonstrates scene stack behaviour:
 - push
 - pop
@@ -15,7 +13,7 @@ from pygame_engine.input import actions
 from pygame_engine.layout import anchor, column
 from pygame_engine.scene import Scene
 from pygame_engine.theme.runtime import get_theme
-from pygame_engine.ui import Button, Label, Panel, TextBlock
+from pygame_engine.ui import Button, Label, Panel, Stack, TextBlock
 
 
 class SceneMenu(Scene):
@@ -68,7 +66,7 @@ class SceneMenu(Scene):
         panel.add(replace_btn)
         panel.add(quit_btn)
 
-        root = Panel(pygame.Rect(screen), draw_background=False, draw_border=False)
+        root = Stack(pygame.Rect(screen))
         root.add(title)
         root.add(panel)
         self.root_widget = root
@@ -122,7 +120,7 @@ class AlternateScene(Scene):
         panel.add(body)
         panel.add(back)
 
-        root = Panel(pygame.Rect(screen), draw_background=False, draw_border=False)
+        root = Stack(pygame.Rect(screen))
         root.add(title)
         root.add(panel)
         self.root_widget = root
@@ -178,7 +176,7 @@ class OverlayScene(Scene):
         dialog.add(body)
         dialog.add(close_btn)
 
-        root = Panel(pygame.Rect(screen), draw_background=False, draw_border=False)
+        root = Stack(pygame.Rect(screen))
         root.add(dialog)
         self.root_widget = root
 
@@ -200,6 +198,7 @@ def run() -> None:
         title="pygame_engine — scene demo",
         width=1280,
         height=720,
+        resizable=True,
         target_fps=60,
     )
     app = Application(config)

@@ -26,6 +26,7 @@ from pygame_engine.ui.controls.slider import Slider
 from pygame_engine.ui.feedback.toast import Toast
 from pygame_engine.ui.feedback.tooltip import Tooltip
 from pygame_engine.ui.text.label import Label
+from pygame_engine.ui.text.rich_label import RichLabel
 from pygame_engine.ui.text.text_block import TextBlock
 
 __all__ = [
@@ -43,5 +44,6 @@ __all__ = [
     "Toast",
     "Tooltip",
     "Label",
+    "RichLabel",
     "TextBlock",
 ]

@@ -1,5 +1,3 @@
-## Purpose
-
 `pygame_engine` is a lightweight reusable pygame-ce framework for 2D games.
 
 It provides: application loop, scene flow, UI toolkit, layout helpers,
@@ -35,7 +33,7 @@ pygame_engine/              ← repo root
 ├── docs/                   ← architecture and system documentation
 ├── examples/               ← 12 runnable usage examples
 ├── game_template/          ← copy-and-start skeleton for new projects
-├── tests/                  ← 1033+ automated tests (38 files)
+├── tests/                  ← 1100+ automated tests (38 files)
 │   └── conftest.py
 ├── pygame_engine/          ← the importable Python package
 │   ├── animation/          ← Tween, SpriteAnimation, AnimationPlayer, StateMachine
@@ -143,6 +141,7 @@ Scene contracts, stack management, and transitions.
 
 ### `theme/`
 Design tokens, `Theme` dataclass, `get_theme()`/`set_theme()`.
+File-driven theming: `theme_from_file()`, `reload_theme_file()`, `theme_to_dict()`.
 
 ### `graphics/`
 Draw helpers, nine-slice panels, sprite renderer, surface utilities.
@@ -163,6 +162,9 @@ All planned phases complete. 1033+ tests across 38 files.
 - Phase 9: Camera, Tilemap, Dialogue, Slider/Checkbox/RadioGroup
 - Phase 10: Screen manager (on_resize, set_resolution, set_fullscreen), Responsive layout, Sprite atlas, Localisation, Crash logging
 - Phase 11: Pathfinding (A*), Animation state machine, Positional audio, 2D lighting
+- Phase 12: Key remapping, controller/joystick support, binding persistence
+- Phase 13: File-driven JSON theming with live reload, RichLabel rich text widget
+  New tests: test_theme_loader.py (30 tests), test_rich_label.py (28 tests)
 
 ---
 
@@ -174,3 +176,4 @@ All planned phases complete. 1033+ tests across 38 files.
 4. Expose a clean public API — top-level imports feel intentional.
 5. Keep pygame visible — reduce boilerplate, don't hide the library.
 6. No feature is complete until code, tests, examples, and docs all agree.
+========================================================================================================================

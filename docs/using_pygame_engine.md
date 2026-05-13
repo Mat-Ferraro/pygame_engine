@@ -1,5 +1,3 @@
-## What the engine provides vs what your game provides
-
 | Engine | Your game |
 |---|---|
 | Application runtime and main loop | Gameplay rules and systems |
@@ -326,6 +324,48 @@ bus.emit("player.damaged", amount=30, source="spike")
 
 ---
 
+## File-driven theming
+
+```python
+from pathlib import Path
+from pygame_engine.theme.loader import theme_from_file, reload_theme_file
+from pygame_engine.theme.runtime import set_theme
+
+# Load at startup
+set_theme(theme_from_file(Path('assets/theme.json')))
+
+# Hot-reload during development (press a key, or on file-watch)
+reload_theme_file(Path('assets/theme.json'))
+```
+
+The JSON file is a partial override — only keys you want to change:
+
+```json
+{
+    "colours": {"bg_base": [20, 20, 28]},
+    "button":  {"normal": {"bg": [50, 85, 165], "radius": 6}}
+}
+```
+
+---
+
+## Rich text
+
+```python
+from pygame_engine.ui.text.rich_label import RichLabel
+
+lbl = RichLabel(
+    rect=pygame.Rect(x, y, w, h),
+    text='[b]Score:[/b] [color=#ffd700]1 234[/color] pts',
+)
+lbl.render(surface)
+```
+
+Supported tags: `[b]bold[/b]`, `[i]italic[/i]`, `[color=#rrggbb]text[/color]`, `[size=N]text[/size]`.
+Tags may be nested. Unknown tags render as literal text.
+
+---
+
 ## Rules for game projects
 
 1. Use engine primitives first — build custom only when needed.
@@ -333,3 +373,4 @@ bus.emit("player.damaged", amount=30, source="spike")
 3. Game scenes, models, and systems live in your game repo.
 4. If a pattern appears across multiple projects, only then consider moving it to the engine.
 5. Update engine docs when engine contracts change.
+========================================================================================================================

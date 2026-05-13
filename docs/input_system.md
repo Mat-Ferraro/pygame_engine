@@ -1,304 +1,246 @@
-The input system translates raw pygame input into engine-friendly runtime input state and higher-level actions.
+# Input System
 
-Its goals are:
-- reduce repetitive raw pygame input handling
-- support consistent action-based input
-- keep mouse and keyboard behavior predictable
-- integrate cleanly with scenes and widgets
+## Purpose
 
----
-
-## Accepted Core Decisions
-
-The input system currently assumes:
-
-- action-based input is preferred over scattered raw key handling
-- `handle_event(event) -> bool` is the event-consumption model for scenes and widgets
-- input routing should prioritize topmost/modal UI before lower-level scene logic
-- debug tools should be supported through explicit input actions, not random hardcoded keys
+Device-agnostic action-based input. Scenes query actions (`CONFIRM`,
+`NAV_UP`, etc.) rather than physical keys. Keyboard, mouse, and
+controllers all resolve to the same action strings.
 
 ---
 
-## Current Input Modules
+## Quick start
 
-The input package currently contains:
+```python
+from pygame_engine.input import actions
 
-- `actions.py`
-- `bindings.py`
-- `input_manager.py`
+# In a scene:
+inp = self._app.input_manager
 
-Suggested responsibilities:
-- `actions.py` = canonical action identifiers
-- `bindings.py` = default mappings from keys/buttons to actions
-- `input_manager.py` = current frame input state and query API
-
----
-
-## Design Principles
-
-1. Raw pygame input still exists, but should be wrapped for convenience.
-2. Scenes and widgets should usually query actions or current input state, not manually track transitions themselves.
-3. Input handling should support both direct event routing and frame-state queries.
-4. UI and gameplay input should remain separable.
-
----
-
-## Input Layers
-
-### Raw Input
-Direct pygame events:
-- keydown
-- keyup
-- mouse motion
-- mouse button down
-- mouse button up
-- wheel input
-- text input (handled by `InputField` via TEXTINPUT events)
-
-### Normalized Runtime State
-The engine should track:
-- pressed this frame
-- released this frame
-- held/down
-- mouse position
-- mouse delta
-- wheel delta
-
-### Action Mapping
-Game/app code should often work in terms of actions:
-- `confirm`
-- `cancel`
-- `up`
-- `down`
-- `left`
-- `right`
-- `pause`
-- `debug_toggle`
-
-This decouples behavior from physical keys.
-
----
-
-## Input Routing Priority
-
-Accepted routing philosophy:
-
-1. application-level essential handling
-2. topmost/modal scene or overlay
-3. focused widget / UI layer
-4. scene-level logic
-5. global debug/runtime shortcuts
-
-Exact implementation may vary, but this ordering is the intended direction.
+if inp.was_action_pressed(actions.CONFIRM):   ...
+if inp.is_action_down(actions.NAV_LEFT):      ...
+if inp.was_action_released(actions.CANCEL):   ...
+```
 
 ---
 
 ## Actions
 
-`actions.py` should define canonical action names or constants.
+Actions are plain strings defined in `pygame_engine/input/actions.py`.
 
-Recommended rule:
-- action names represent intent, not device details
+| Constant | String | Default keys |
+|---|---|---|
+| `CONFIRM` | `"confirm"` | Enter, Numpad Enter, Space |
+| `CANCEL` | `"cancel"` | Escape |
+| `NAV_UP` | `"nav_up"` | Up, W |
+| `NAV_DOWN` | `"nav_down"` | Down, S |
+| `NAV_LEFT` | `"nav_left"` | Left, A |
+| `NAV_RIGHT` | `"nav_right"` | Right, D |
+| `PAUSE` | `"pause"` | P |
 
-Good examples:
-- `CONFIRM`
-- `CANCEL`
-- `NAV_UP`
-- `NAV_DOWN`
-- `PAUSE`
-- `DEBUG_TOGGLE`
+Add game-specific actions in your game project:
 
-Avoid:
-- `ENTER_KEY`
-- `ESCAPE_KEY`
-- `LEFT_MOUSE_BUTTON`
+```python
+from pygame_engine.input.actions import CONFIRM, CANCEL
+ATTACK   = "attack"
+INTERACT = "interact"
+DASH     = "dash"
+```
 
-Those belong to bindings, not actions.
+Then remap them at startup or in settings:
 
----
-
-## Bindings
-
-`bindings.py` should define the default mapping from physical input to actions.
-
-Examples:
-- Enter -> confirm
-- Escape -> cancel
-- W / Up Arrow -> nav_up
-- Mouse Left -> primary_click
-
-Recommended rule:
-- bindings are data/config-like
-- action definitions remain separate from the mapping
-
-Future possibility:
-- allow user overrides or project-specific binding sets
+```python
+app.input_manager.remap("attack",   pygame.K_z)
+app.input_manager.remap("interact", pygame.K_x)
+```
 
 ---
 
-## InputManager Responsibilities
+## Keyboard
 
-`InputManager` should:
-- collect raw input state each frame
-- track transitions such as just-pressed and just-released
-- expose mouse position and related state
-- answer action queries
-- clear one-frame transient state between frames
+```python
+# Action queries (device-agnostic — works for keyboard and controller)
+inp.was_action_pressed(actions.CONFIRM)
+inp.is_action_down(actions.NAV_LEFT)
+inp.was_action_released(actions.CANCEL)
 
-It should not:
-- contain game behavior
-- directly manage scene flow
-- become the sole source of all UI logic
-
----
-
-## Frame Semantics
-
-The input system should define exact meaning for each state:
-
-- **pressed**: became active this frame
-- **released**: stopped being active this frame
-- **held** / **down**: currently active
-
-This distinction must be stable and documented because many systems depend on it.
+# Direct key queries
+inp.is_key_down(pygame.K_LSHIFT)
+inp.was_key_pressed(pygame.K_TAB)
+```
 
 ---
 
-## Mouse Support
+## Mouse
 
-The engine should support:
-- current mouse position
-- optional previous mouse position
-- delta movement
-- button pressed/released/down
-- wheel delta
-- basic hit-test friendliness for widgets
-
----
-
-## Keyboard Support
-
-The engine should support:
-- raw key state queries
-- mapped action state queries
-- modifier state if needed later
-- optional repeat behavior handling
-
-Text input mode is implemented in `InputField` via TEXTINPUT events.
-`InputManager` remains command-style only.
+```python
+inp.get_mouse_pos()         # (x, y) screen coords
+inp.get_mouse_delta()       # (dx, dy) since last frame
+inp.was_mouse_pressed(1)    # 1=left, 2=middle, 3=right
+inp.is_mouse_down(1)
+inp.was_mouse_released(1)
+inp.get_wheel_delta()       # (x, y); y>0 = scroll up
+```
 
 ---
 
-## Focus and Input
+## Controller
 
-UI focus interacts with input routing.
+Controllers are detected automatically when connected (hot-plug via
+`JOYDEVICEADDED` events). All connected controllers contribute to
+action queries.
 
-Recommended rule:
-- focused widgets may consume keyboard input first within the active/top UI layer
-- mouse-hit widgets may consume pointer input
-- scenes should not blindly process UI-consumed input
+```python
+# Action queries work transparently for controllers too
+inp.was_action_pressed(actions.CONFIRM)   # A button or Enter
+inp.is_action_down(actions.NAV_LEFT)      # D-pad or left stick
 
-This is one reason event-consumption support is important.
+# Controller-specific queries
+inp.has_controller              # True if any controller connected
+inp.controller_count            # number of connected controllers
+inp.get_joystick_ids()          # list of instance IDs
+inp.get_controller_name(id)     # name string
+inp.get_axis(joy_id, axis)      # raw axis value (dead-zone filtered)
+inp.was_controller_button_pressed(button)
+inp.is_controller_button_down(button)
+```
 
----
+### Default controller mappings
 
-## Input API Direction
+| Button | Action |
+|---|---|
+| A / Cross (0) | CONFIRM |
+| B / Circle (1) | CANCEL |
+| Start / Options (7) | PAUSE |
+| D-pad (11–14) | NAV_UP/DOWN/LEFT/RIGHT |
+| Left stick | NAV_UP/DOWN/LEFT/RIGHT (threshold 0.5) |
 
-Possible runtime queries:
+### Dead zones
 
-- `is_action_down(action)`
-- `was_action_pressed(action)`
-- `was_action_released(action)`
-- `is_key_down(key)`
-- `was_mouse_pressed(button)`
-- `get_mouse_pos()`
+```python
+from pygame_engine.input.input_manager import ControllerConfig
 
-The exact API can evolve, but these use cases should be supported.
-
----
-
-## Rebinding
-
-Not required in the first version, but the system should not block it.
-
-Recommended design direction:
-- keep actions and bindings separate now
-- allow bindings to become data-driven later
-
----
-
-## Debug Input
-
-Reserved debug actions should be defined explicitly.
-
-These are all implemented:
-- `DEBUG_TOGGLE` (F1) — toggles `flags.show_overlay`
-- `INSPECTOR_TOGGLE` (F2) — dumps scene/widget tree to debug log
-- `CONSOLE_TOGGLE` (F3) — toggles `flags.show_console`
-
-These should not be scattered as random hardcoded keys.
+config = ControllerConfig(dead_zone=0.2, threshold=0.6)
+app = Application(config)   # pass via AppConfig or post-init
+```
 
 ---
 
-## Rules for Future Development
+## Key remapping
 
-1. Keep actions separate from physical keys.
-2. Keep scene and widget input routing explicit.
-3. Keep one-frame transitions accurate and well tested.
-4. Avoid duplicating input edge detection in many modules.
-5. Do not hardcode device-specific behavior into high-level systems.
+```python
+# Remap a keyboard key to an action
+inp.remap(actions.CONFIRM, pygame.K_z)
+
+# Remap a controller button
+inp.remap_controller(actions.CONFIRM, 2)
+
+# Query current binding
+key = inp.get_key_for_action(actions.CONFIRM)   # pygame key int or None
+btn = inp.get_button_for_action(actions.CANCEL)
+
+# Reset to defaults
+inp.reset_to_defaults()
+
+# Human-readable key names (for settings UI)
+from pygame_engine.input.bindings import key_name, controller_button_name
+key_name(pygame.K_RETURN)         # "Enter"
+controller_button_name(0)         # "A / Cross"
+```
 
 ---
 
-## Open Questions
+## Saving and loading bindings
 
-- Should mouse buttons also map into actions, or remain partly separate?
-- Should action queries be string-based, enum-based, or constant-based?
-- Should `InputManager` expose raw text input events directly, or keep delegating to `InputField`?
-- Should `InputManager` process events directly or consume already-polled event lists?
+```python
+# Save
+saved = inp.bindings_to_dict()   # JSON-serialisable dict
+save_manager.save("settings", {"bindings": saved})
+
+# Load
+data = save_manager.load("settings")
+inp.bindings_from_dict(data["payload"]["bindings"])
+```
 
 ---
 
-## Locked Implementation Decisions
+## Custom bindings at startup
 
-### Actions are plain string constants
-**Decision:** `actions.py` defines action names as plain module-level string
-constants. No enum.
+```python
+from pygame_engine.input.bindings import DEFAULT_BINDINGS
+from pygame_engine.input import actions
 
-**Reason:** Enums add import friction and no concrete benefit at this scale.
-Strings are easy to extend in game projects without touching the engine.
+bindings = {
+    **DEFAULT_BINDINGS,
+    pygame.K_z:    actions.CONFIRM,
+    pygame.K_x:    actions.CANCEL,
+    pygame.K_j:    "attack",
+    pygame.K_k:    "jump",
+}
+app = Application(config)
+# After run() initialises input_manager:
+app.input_manager.bindings = bindings
+```
 
-### Mouse buttons are NOT mapped to actions
-**Decision:** Mouse position and button state are queried directly on
-`InputManager` (`was_mouse_pressed`, `is_mouse_down`, `get_mouse_pos`).
-Mouse clicks are not routed through the action system.
+---
 
-**Reason:** Widgets handle mouse interaction via hit-testing against their
-rect. Routing mouse clicks through actions would add a layer with no benefit
-since widgets need the position anyway.
+## Haptic feedback
 
-### Text input via TEXTINPUT events — `InputField` widget
-**Decision:** Character entry (typing) is handled by the `InputField` widget
-via pygame's `TEXTINPUT` events, not by `InputManager`. `InputManager`
-handles command-style input (actions, key states) only.
+```python
+# Rumble all connected controllers
+inp.rumble(low=0.3, high=0.8, duration_ms=200)
 
-**Reason:** Text input is a distinct mode. `InputField` calls
-`pygame.key.start_text_input()` on focus and `stop_text_input()` on unfocus,
-keeping text entry self-contained in the widget rather than polluting the
-action-based input system.
+# Rumble a specific controller
+inp.rumble(low=0.5, high=0.5, duration_ms=300, joystick_id=joy_id)
 
-### `InputManager.update(events)` consumes the already-polled event list
-**Decision:** `Application` calls `pygame.event.get()` once per frame and
-passes the list to both `input_manager.update(events)` and the event routing
-loop. `InputManager` does not call `pygame.event.get()` itself.
+# Stop rumble immediately
+inp.stop_rumble()              # all controllers
+inp.stop_rumble(joystick_id=0) # specific controller
+```
 
-**Reason:** Prevents double-polling. The event list is polled once and shared.
+| Parameter | Range | Notes |
+|---|---|---|
+| `low` | `0.0–1.0` | Low-frequency motor — deep, heavy rumble |
+| `high` | `0.0–1.0` | High-frequency motor — sharp, buzzing vibration |
+| `duration_ms` | int | Duration in milliseconds |
 
-### One-frame transient state cleared at the start of `update()`
-**Decision:** `_keys_pressed`, `_keys_released`, `_mouse_pressed`,
-`_mouse_released`, and `_wheel_delta` are all cleared at the top of
-`update()` before processing the new event list.
+Controllers that don't support rumble silently ignore the call.
+Always safe to call regardless of whether a controller is connected.
 
-**Reason:** These are strictly per-frame states. Clearing at the top of
-update (rather than end of frame) means they are always accurate for the
-frame in which they occurred and gone by the next.
+### Common patterns
+
+```python
+# Player takes damage
+inp.rumble(low=0.3, high=0.8, duration_ms=200)
+
+# Heavy impact / explosion
+inp.rumble(low=0.9, high=0.4, duration_ms=400)
+
+# Subtle feedback (footstep, pickup)
+inp.rumble(low=0.0, high=0.2, duration_ms=60)
+
+# Stop on pause
+def on_pause(self):
+    self._app.input_manager.stop_rumble()
+```
+
+---
+
+## Accepted decisions
+
+### Actions are strings, not enums
+Plain strings are easy to extend from game projects, require no import
+of an enum class, and work naturally as dict keys for serialisation.
+
+### Controllers contribute to the same action queries
+`was_action_pressed(CONFIRM)` returns True for both Enter and the A
+button. Games don't need separate code paths per device.
+
+### Dead zones are applied at axis-read time
+Axis values below `dead_zone` are clamped to 0.0 immediately on the
+`JOYAXISMOTION` event. This keeps all downstream code clean.
+
+### Remapping removes the old binding
+`remap(action, key)` removes any previous key bound to that action
+before adding the new one. This keeps the binding map 1:1 (one key
+per action). If you want multiple keys per action, add them manually
+to `input_manager.bindings` without using `remap()`.

@@ -1,8 +1,11 @@
 """
+Demonstrates Tilemap: building from code, multi-layer rendering,
+collision detection, and camera following the player.
+
 What this example shows:
-- Building a tilemap from code (no file needed)
-- Multi-layer rendering (ground + decoration)
-- Collision detection and simple resolution
+- Building a Tilemap from code (no image file needed)
+- Multi-layer rendering (ground + collision)
+- Collision detection and resolution with get_colliding_tiles()
 - Camera following the player with world bounds
 
 Controls:
@@ -15,7 +18,9 @@ Run from the repo root:
 """
 
 from __future__ import annotations
+
 import pygame
+
 from pygame_engine.app import Application, AppConfig
 from pygame_engine.camera import Camera
 from pygame_engine.input import actions
@@ -24,20 +29,19 @@ from pygame_engine.theme.runtime import get_theme
 from pygame_engine.tilemap import TileLayer, Tilemap, Tileset
 from pygame_engine.ui import Label, Stack
 
-TILE  = 32
-COLS  = 40
-ROWS  = 20
+TILE    = 32
+COLS    = 40
+ROWS    = 20
 GRAVITY = 800
 
 
 def _build_tileset() -> Tileset:
-    """Build a simple colour-based tileset (no image file needed)."""
     colours = [
-        (60, 100, 60),   # 0 grass
-        (80, 60, 40),    # 1 dirt
-        (120, 120, 120), # 2 stone
-        (200, 180, 80),  # 3 sand
-        (40, 80, 160),   # 4 water
+        (60,  100, 60),   # 0 grass
+        (80,  60,  40),   # 1 dirt
+        (120, 120, 120),  # 2 stone
+        (200, 180, 80),   # 3 sand
+        (40,  80,  160),  # 4 water
     ]
     surfaces = []
     for col in colours:
@@ -54,12 +58,10 @@ def _build_map() -> Tilemap:
     ground = [[-1] * COLS for _ in range(ROWS)]
     solid  = [[-1] * COLS for _ in range(ROWS)]
 
-    # Floor
+    # Floor (bottom two rows)
     for c in range(COLS):
-        ground[ROWS-1][c] = 1
-        solid[ROWS-1][c]  = 1
-        ground[ROWS-2][c] = 0
-        solid[ROWS-2][c]  = 1
+        ground[ROWS-1][c] = 1; solid[ROWS-1][c] = 1
+        ground[ROWS-2][c] = 0; solid[ROWS-2][c] = 1
 
     # Platforms
     for c in range(5, 12):
@@ -69,14 +71,14 @@ def _build_map() -> Tilemap:
     for c in range(28, 36):
         ground[13][c] = 2; solid[13][c] = 1
 
-    # Walls
+    # Wall
     for r in range(ROWS - 5, ROWS - 1):
         ground[r][20] = 2; solid[r][20] = 1
 
     ts   = _build_tileset()
-    gl   = TileLayer("ground", ground)
-    sl   = TileLayer("collision", solid)
-    tmap = Tilemap(ts, TILE, TILE, layers=[gl, sl])
+    tmap = Tilemap(ts, TILE, TILE,
+                   layers=[TileLayer("ground", ground),
+                           TileLayer("collision", solid)])
     tmap.set_collision_layer("collision")
     return tmap
 
@@ -85,11 +87,11 @@ class TilemapExampleScene(Scene):
 
     def __init__(self, app: Application) -> None:
         super().__init__()
-        self._app    = app
-        self._tmap   = _build_map()
-        self._player = pygame.Rect(96, (ROWS - 4) * TILE, 24, 32)
-        self._vx     = 0.0
-        self._vy     = 0.0
+        self._app       = app
+        self._tmap      = _build_map()
+        self._player    = pygame.Rect(96, (ROWS - 4) * TILE, 24, 32)
+        self._vx        = 0.0
+        self._vy        = 0.0
         self._on_ground = False
         self._camera: Camera | None = None
 
@@ -101,42 +103,68 @@ class TilemapExampleScene(Scene):
         self._camera.move_to(self._player.center)
 
         root = Stack(pygame.Rect(screen))
-        root.add(Label(pygame.Rect(12, 12, 500, 20),
-                       "Arrows/WASD — move   Space — jump   ESC — quit",
-                       font_size=theme.typography.xs,
-                       colour=theme.colours.text_secondary))
+        root.add(Label(
+            pygame.Rect(12, 12, 500, 20),
+            "Arrows/WASD — move   Space — jump   ESC — quit",
+            font_size=theme.typography.xs,
+            colour=theme.colours.text_secondary,
+        ))
         self.root_widget = root
 
     def _handle_event_scene(self, event: pygame.event.Event) -> bool:
-        from pygame_engine.input import actions as a
-        if self._app.input_manager.was_action_pressed(a.CANCEL):
+        if self._app.input_manager.was_action_pressed(actions.CANCEL):
             self._app.stop(); return True
         return False
 
     def update(self, dt: float) -> None:
-        inp = self._app.input_manager
+        inp   = self._app.input_manager
         speed = 180.0
         self._vx = 0.0
+
         if inp.is_action_down(actions.NAV_LEFT):  self._vx = -speed
         if inp.is_action_down(actions.NAV_RIGHT): self._vx =  speed
-        if inp.was_action_pressed(actions.CONFIRM) and self._on_ground:
+
+        # Use was_key_pressed(K_SPACE) directly so it doesn't compete
+        # with UI confirm actions (Enter/Space both map to CONFIRM).
+        if inp.was_key_pressed(pygame.K_SPACE) and self._on_ground:
             self._vy = -480.0
 
+        # Gravity
         self._vy = min(self._vy + GRAVITY * dt, 900)
+
+        # Horizontal movement + collision
         self._player.x += int(self._vx * dt)
         for t in self._tmap.get_colliding_tiles(self._player):
             if self._vx > 0: self._player.right = t.left
             elif self._vx < 0: self._player.left = t.right
             self._vx = 0
 
+        # Vertical movement + collision
+        # Resolve using overlap depth so multi-tile frames work correctly.
         self._on_ground = False
         self._player.y += int(self._vy * dt)
         for t in self._tmap.get_colliding_tiles(self._player):
-            if self._vy > 0:
-                self._player.bottom = t.top; self._on_ground = True
-            elif self._vy < 0:
+            overlap_top    = self._player.bottom - t.top
+            overlap_bottom = t.bottom - self._player.top
+            if overlap_top <= overlap_bottom:
+                self._player.bottom = t.top
+                self._on_ground = True
+                self._vy = 0
+            else:
                 self._player.top = t.bottom
-            self._vy = 0
+                self._vy = 0
+
+        # 1-pixel ground probe: keeps on_ground True when vy rounds to 0
+        # at the tile boundary so jumping never misses a frame.
+        if not self._on_ground and self._vy >= 0:
+            self._player.y += 1
+            for t in self._tmap.get_colliding_tiles(self._player):
+                if self._player.bottom - t.top <= t.bottom - self._player.top:
+                    self._player.bottom = t.top
+                    self._on_ground = True
+                    self._vy = 0
+            if not self._on_ground:
+                self._player.y -= 1
 
         if self._camera:
             self._camera.follow(self._player.center, speed=7.0, dt=dt)
@@ -153,8 +181,13 @@ class TilemapExampleScene(Scene):
 
 
 def run() -> None:
-    app = Application(AppConfig(title="pygame_engine — tilemap", width=1280, height=720))
+    app = Application(AppConfig(
+        title="pygame_engine — tilemap",
+        width=1280, height=720,
+        resizable=True,
+    ))
     app.run(TilemapExampleScene(app))
+
 
 if __name__ == "__main__":
     run()

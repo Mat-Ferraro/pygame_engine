@@ -122,7 +122,8 @@ class WidgetsExampleScene(Scene):
 
 
 def run() -> None:
-    app = Application(AppConfig(title="pygame_engine — widgets", width=1280, height=720))
+    app = Application(AppConfig(title="pygame_engine — widgets", width=1280, height=720,
+        resizable=True))
     app.run(WidgetsExampleScene(app))
 
 if __name__ == "__main__":

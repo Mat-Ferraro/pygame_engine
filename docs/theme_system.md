@@ -1,267 +1,148 @@
+# Theme System
+
 ## Purpose
 
-The theme system defines how the engine expresses visual style in a reusable, structured way.
-
-The theme system should allow:
-- consistent styling across widgets
-- clean defaults
-- project-level overrides
-- separation between design tokens and resolved runtime values
+Centralised visual styling for all widgets and scenes. Widgets look up
+colours, sizes, and spacing from a single active theme rather than
+hardcoding values.
 
 ---
 
-## Accepted Core Decisions
+## Quick start
 
-The theme system currently assumes:
-
-- widgets may access styling through a stable runtime theme interface
-- theme values should not be hardcoded throughout widgets
-- engine defaults should exist and be overridable
-- local/widget-specific overrides may be added later if useful
-
----
-
-## Current Theme Modules
-
-The theme package currently contains:
-
-- `tokens.py`
-- `defaults.py`
-- `runtime.py`
-
-Suggested roles:
-- `tokens.py` = raw design tokens
-- `defaults.py` = default theme definitions
-- `runtime.py` = active theme object and theme lookup behavior
-
----
-
-## Theme Design Principles
-
-1. Widgets should not hardcode magic numbers and colors everywhere.
-2. Theme values should be centralized and overridable.
-3. Tokens should be reusable across many widgets.
-4. Runtime theme access should be predictable and lightweight.
-5. Game projects should be able to override appearance without changing widget logic.
-
----
-
-## Theme Layers
-
-### Tokens
-The smallest design values:
-- colors
-- spacing
-- font sizes
-- radii
-- border widths
-- timing constants
-
-### Defaults
-A coherent default theme built from tokens.
-
-### Runtime
-The active resolved theme object used during app execution.
-
----
-
-## What Belongs in Tokens
-
-Examples:
-- color palette values
-- spacing scale
-- typography scale
-- radius scale
-- shadow values if supported
-- standard timing values for UI transitions
-
-Tokens should be:
-- reusable
-- generic
-- stable
-
-Tokens should not contain widget-specific behavior logic.
-
----
-
-## What Belongs in Defaults
-
-`defaults.py` should define the engine’s baseline theme.
-
-This can include:
-- default button style values
-- default panel background/border values
-- default text styles
-- default tooltip/toast styles
-- default spacing relationships
-
-Defaults should translate raw tokens into practical engine styles.
-
----
-
-## What Belongs in Runtime
-
-`runtime.py` should expose the currently active theme data.
-
-Possible responsibilities:
-- store the current theme
-- resolve style lookups
-- provide theme access helpers
-- support theme swapping if needed later
-
-Recommended rule:
-- runtime should be the access point, not the source of raw token truth
-
----
-
-## Widget Styling Model
-
-Accepted direction:
-- widgets may access the active theme through a stable runtime interface
-- style keys should remain explicit
-- local overrides may be added later
-
-This is intentionally simpler than a fully injected style graph for version one.
-
----
-
-## Theme Categories
-
-The runtime theme should support categories such as:
-- colors
-- typography
-- spacing
-- surfaces
-- borders
-- controls
-- feedback widgets
-
-Examples:
-- button normal/hover/pressed/disabled styles
-- panel fill/border styles
-- label text color/size defaults
-- tooltip background/text styles
-
----
-
-## Override Strategy
-
-Projects using `pygame_engine` should be able to:
-- use engine defaults directly
-- override some theme values
-- replace the whole default theme if desired
-
-Recommended rule:
-- use shallow, explicit override paths
-- avoid undocumented hidden theme keys
-
----
-
-## Theme Lookup Direction
-
-Possible usage:
 ```python
-theme = app.theme
-button_style = theme.controls.button.primary
+from pygame_engine.theme.runtime import get_theme, set_theme
+from pygame_engine.theme.defaults import Theme
+
+# Read current theme (in any widget or scene)
+theme = get_theme()
+colour    = theme.colours.bg_base
+font_size = theme.typography.md
+btn_bg    = theme.button.normal.bg
+
+# Set a custom theme at startup
+set_theme(Theme(...))   # or use theme_from_file()
 ```
 
-The exact API can change, but runtime theme access should be:
-- discoverable
-- structured
-- easy to autocomplete if typed later
+---
+
+## File-driven theming
+
+Load a JSON file and override only the values you want to change:
+
+```python
+from pathlib import Path
+from pygame_engine.theme.loader import theme_from_file, reload_theme_file
+from pygame_engine.theme.runtime import set_theme
+
+# Load once at startup
+theme = theme_from_file(Path("assets/theme.json"))
+set_theme(theme)
+
+# Hot-reload during development (call on key press or file-watch event)
+reload_theme_file(Path("assets/theme.json"))
+```
+
+### JSON format
+
+Only include keys you want to override. All other values keep their defaults:
+
+```json
+{
+    "colours": {
+        "bg_base":   [20, 20, 28],
+        "bg_raised": [30, 32, 44],
+        "text":      [228, 228, 235]
+    },
+    "typography": {
+        "family": "segoeui,helvetica,arial",
+        "md": 18
+    },
+    "button": {
+        "normal":  {"bg": [50, 85, 165], "radius": 6},
+        "hovered": {"bg": [70, 115, 205]},
+        "padding": 10
+    },
+    "panel": {
+        "surface": {"bg": [28, 32, 44], "border": [55, 62, 85]},
+        "padding": 16
+    },
+    "spacing": {
+        "xl": 28
+    }
+}
+```
+
+### Generate a starter file from the current theme
+
+```python
+import json
+from pygame_engine.theme.loader import theme_to_dict
+from pygame_engine.theme.runtime import get_theme
+
+print(json.dumps(theme_to_dict(get_theme()), indent=2))
+```
 
 ---
 
-## Hardcoding Rules
+## Theme structure
 
-Avoid hardcoding in widgets:
-- RGB tuples
-- font sizes
-- border thickness
-- spacing values
+```
+Theme
+├── colours         ColoursTheme    — bg_dark, bg_base, bg_raised, text, text_secondary, border
+├── typography      TypographyTheme — family, xs, sm, md, lg, xl, xxl
+├── spacing         SpacingTheme    — xs, sm, md, lg, xl, xxl
+├── button          ButtonTheme     — normal, hovered, pressed, disabled, text, text_disabled, padding
+├── label           LabelTheme      — text, secondary_text
+└── panel           PanelTheme      — surface, padding
+```
 
-Allowed exceptions:
-- temporary prototyping
-- debug-only visuals
-- isolated tests/examples
-
-Even then, those should usually be migrated into theme values.
-
----
-
-## Relationship to `utils/colors.py`
-
-`utils/colors.py` may still contain low-level color helpers:
-- color interpolation
-- clamp helpers
-- conversion helpers
-
-But actual visual identity values should live in `theme`, not `utils`.
+Each `SurfaceStyle` has: `bg`, `border`, `border_width`, `radius`.
+Each `TextStyle` has: `colour`, `font_size`, `font_family`, `bold`.
 
 ---
 
-## Rules for Future Development
+## Creating a custom theme
 
-1. Tokens define reusable values.
-2. Defaults define the engine’s baseline look.
-3. Runtime exposes active theme access.
-4. Widgets should be theme-aware, not theme-hardcoded.
-5. Theme keys should remain documented and stable.
+```python
+from dataclasses import replace
+from pygame_engine.theme.defaults import Theme, ColoursTheme, ButtonTheme, SurfaceStyle
+
+custom = Theme(
+    colours=ColoursTheme(
+        bg_base=(18, 18, 26),
+        text=(230, 230, 240),
+    ),
+    button=ButtonTheme(
+        normal=SurfaceStyle(bg=(45, 80, 160), radius=8),
+    ),
+)
+set_theme(custom)
+```
+
+Or extend the default:
+
+```python
+from copy import deepcopy
+theme = deepcopy(DEFAULT_THEME)
+theme.colours.bg_base = (18, 18, 26)
+set_theme(theme)
+```
 
 ---
 
-## Open Questions
+## Accepted decisions
 
-- Should theme values be plain dictionaries, dataclasses, or typed objects?
-- Should widgets cache resolved style values?
-- Should theme changes at runtime be supported?
-- How should local widget style overrides interact with the active theme?
+### Python dataclasses, not YAML/JSON as primary format
+The Python theme is the source of truth — type-checked, IDE-navigable,
+refactor-safe. The JSON loader is an optional overlay for designer workflow.
 
----
+### `get_theme()` module-level accessor
+Widgets are created in many places. Injection would require threading
+a theme argument through every constructor. A stable global accessor
+is the right tradeoff for a controlled-scope framework.
 
-## Locked Implementation Decisions
-
-### Theme values are dataclasses, not plain dicts
-**Decision:** `Theme` and all sub-objects are `@dataclass` instances.
-
-**Reason:** Dot-access (`theme.button.normal.bg`), IDE autocomplete, and
-type safety with no boilerplate. Trivially overridable via
-`dataclasses.replace()`. Plain dicts have none of these benefits.
-
-### Module-level `get_theme()` / `set_theme()` accessor pattern
-**Decision:** The active theme is a module-level variable in `runtime.py`.
-Widgets call `get_theme()` each frame. Projects call `set_theme()` once
-at startup to customise.
-
-**Reason:** Injection at every widget constructor adds ceremony with no
-benefit in a personal framework. One stable global accessor is simpler and
-equally swappable.
-
-### Widgets do not cache resolved theme values
-**Decision:** Widgets call `get_theme()` and read attribute values each frame.
-No per-widget theme cache.
-
-**Reason:** `get_theme()` is a module-level attribute lookup — effectively
-free. No caching overhead is worth optimising at this scale.
-
-### Runtime theme swapping is supported
-**Decision:** `set_theme(theme)` replaces the active theme immediately.
-Widgets pick up the change on the next frame automatically.
-
-**Reason:** Costs nothing to support given the accessor pattern. Enables
-theme switching (e.g. dark/light mode) without any widget-level changes.
-
-### Local widget style overrides deferred to post-v1
-**Decision:** Widgets read purely from the active theme. Per-widget style
-override dicts are a future addition noted in the contract doc.
-
-**Reason:** Adds significant complexity for low immediate benefit. The theme
-system should be used and understood before adding an override layer on top.
-
-### `app.theme` and `app.set_theme()` convenience accessors added
-**Decision:** `Application` exposes `theme` (property) and `set_theme()`
-(method) as convenience wrappers over `get_theme()` / `set_theme()` from
-`theme.runtime`.
-
-**Reason:** Game code that already holds an `app` reference shouldn't need
-to separately import from `theme.runtime` for common operations.
+### Only overrides in JSON files
+JSON files contain deltas, not full themes. This means new theme fields
+added to the engine automatically get sensible defaults in all existing
+JSON theme files without requiring updates.
