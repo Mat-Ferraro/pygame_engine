@@ -1,8 +1,7 @@
 """
-game/scenes/pause_scene.py
-
 Pushed on top of GameScene when the player pauses. Renders a
 semi-transparent overlay so the game world stays visible behind it.
+Quit-to-menu uses ConfirmDialog to prevent accidental exits.
 """
 
 from __future__ import annotations
@@ -90,5 +89,19 @@ class PauseScene(Scene):
         )
 
     def _quit_to_menu(self) -> None:
+        from pygame_engine.ui.feedback.confirm_dialog import ConfirmDialog
+        ConfirmDialog.push(
+            app=self._app,
+            message="Quit to main menu?\nUnsaved progress will be lost.",
+            confirm_label="Quit",
+            cancel_label="Stay",
+            on_confirm=self._do_quit,
+            danger=True,
+        )
+
+    def _do_quit(self) -> None:
         from game.scenes.main_menu import MainMenuScene
-        self._app.scene_manager.clear_and_push(MainMenuScene(self._app))
+        self._app.scene_manager.clear_and_push(
+            MainMenuScene(self._app),
+            FadeTransition(duration=0.4),
+        )

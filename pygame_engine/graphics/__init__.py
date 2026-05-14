@@ -19,6 +19,11 @@ from pygame_engine.graphics.draw_utils import (
     draw_surface_style,
     draw_vertical_line,
 )
+from pygame_engine.graphics.text_utils import (
+    truncate,
+    wrap_and_truncate,
+    wrap_text,
+)
 from pygame_engine.graphics.nine_slice import (
     NineSlicePanel,
     draw_nine_slice,
@@ -38,6 +43,10 @@ from pygame_engine.graphics.surfaces import (
 )
 
 __all__ = [
+    # text_utils
+    "truncate",
+    "wrap_text",
+    "wrap_and_truncate",
     # draw_utils
     "draw_surface_style",
     "draw_rect_bordered",

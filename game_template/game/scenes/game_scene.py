@@ -1,6 +1,4 @@
 """
-game/scenes/game_scene.py
-
 Main gameplay scene. Replace placeholder content with your game logic.
 
 Pre-wired with stubs for the most common 2D game systems:
@@ -10,7 +8,8 @@ Pre-wired with stubs for the most common 2D game systems:
 - Positional audio (listener follows player)
 - Animation state machine (idle/run/jump)
 - Pathfinding (obstacle grid from tilemap)
-- Pause on ESC
+- LogPanel for in-game event log
+- Pause on ESC or P
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ from pygame_engine.camera import Camera
 from pygame_engine.layout import anchor
 from pygame_engine.scene import Scene, SlideTransition
 from pygame_engine.theme.runtime import get_theme
-from pygame_engine.ui import Label, Stack
+from pygame_engine.ui import Label, LogPanel, Stack
 
 from game import actions
 
@@ -33,6 +32,10 @@ class GameScene(Scene):
 
     Stub pattern — uncomment the systems you need and fill in
     the game-specific logic.
+
+    Pause key: ESC (CANCEL action) or P (PAUSE action).
+    ESC is the standard binding players expect. Both are checked so
+    either key opens the pause menu.
     """
 
     blocks_input_below  = True
@@ -43,6 +46,7 @@ class GameScene(Scene):
         super().__init__()
         self._app    = app
         self._camera: Camera | None = None
+        self._event_log: LogPanel | None = None
 
         # ── Uncomment the systems you need ────────────────────────────────────
         # from pygame_engine.lighting import LightingSystem, Light
@@ -59,8 +63,6 @@ class GameScene(Scene):
 
         # ── Camera ────────────────────────────────────────────────────────────
         self._camera = Camera(screen.width, screen.height)
-        # self._camera.set_world_bounds(self._tmap.world_rect)
-        # self._camera.move_to(player_start_pos)
 
         # ── Tilemap ───────────────────────────────────────────────────────────
         # from pygame_engine.tilemap import Tilemap, Tileset, TileLayer
@@ -108,60 +110,62 @@ class GameScene(Scene):
         theme = get_theme()
         root  = Stack(pygame.Rect(screen))
         root.add(Label(
-            pygame.Rect(12, 12, 400, 22),
-            "ESC — pause",
+            pygame.Rect(12, 12, 300, 22),
+            "ESC / P — pause",
             font_size=theme.typography.xs,
             colour=theme.colours.text_secondary,
         ))
+
+        # Event log — remove or reposition as needed
+        self._event_log = LogPanel(
+            rect=pygame.Rect(screen.width - 310, screen.height - 210, 300, 196),
+            max_lines=100,
+        )
+        self._event_log.append("Game started.", colour=(140, 210, 140))
+        root.add(self._event_log)
+
         self.root_widget = root
+
+    def log_event(self, message: str, colour=None) -> None:
+        """Append a line to the in-game event log."""
+        if self._event_log:
+            self._event_log.append(message, colour=colour)
 
     def on_exit(self) -> None:
         # self._app.audio.stop_music(fade_out_ms=500)
         pass
 
     def on_pause(self) -> None:
-        pass   # stop timers, animations if needed
+        pass
 
     def on_resume(self) -> None:
-        pass   # resume timers, refresh input state
+        pass
 
     def on_resize(self, width: int, height: int) -> None:
         if self._camera:
             self._camera.viewport_size = (width, height)
-        self.on_enter()   # rebuild HUD at new size
+        self.on_enter()
 
     def _handle_event_scene(self, event: pygame.event.Event) -> bool:
-        if self._app.input_manager.was_action_pressed(actions.PAUSE):
-            from game.scenes.pause_scene import PauseScene
-            self._app.scene_manager.push_with(
-                PauseScene(self._app),
-                SlideTransition(duration=0.25, direction="down"),
-            )
+        inp = self._app.input_manager
+        # ESC (CANCEL) and P (PAUSE) both open the pause menu.
+        # ESC is the key players expect; P is the explicit pause binding.
+        if (inp.was_action_pressed(actions.PAUSE)
+                or inp.was_action_pressed(actions.CANCEL)):
+            self._open_pause()
             return True
         return False
 
+    def _open_pause(self) -> None:
+        from game.scenes.pause_scene import PauseScene
+        self._app.scene_manager.push_with(
+            PauseScene(self._app),
+            SlideTransition(duration=0.25, direction="down"),
+        )
+
     def update(self, dt: float) -> None:
-        # ── Update player ─────────────────────────────────────────────────────
-        # self._player.update(dt)
-
-        # ── Update state machine ──────────────────────────────────────────────
-        # self._sm.update(dt, params={"vx": player.vx, "hp": player.hp})
-
-        # ── Update camera ─────────────────────────────────────────────────────
         if self._camera:
-            # self._camera.follow(self._player.rect.center, speed=6, dt=dt)
             self._camera.update(dt)
-
-        # ── Update lighting ───────────────────────────────────────────────────
-        # if self._lights:
-        #     self._player_light.world_x = self._player.rect.centerx
-        #     self._player_light.world_y = self._player.rect.centery
-        #     self._lights.update(dt)
-
-        # ── Update positional audio ───────────────────────────────────────────
-        # if self._pos_audio:
-        #     self._pos_audio.set_listener(*self._player.rect.center)
-
         super().update(dt)
 
     def render(self, surface: pygame.Surface) -> None:

@@ -470,6 +470,38 @@ inp.rumble(low=0.5, high=0.5, duration_ms=300, joystick_id=0)
 inp.stop_rumble()
 ```
 
+
+## Text layout utilities
+
+```python
+from pygame_engine.graphics.text_utils import truncate, wrap_text, wrap_and_truncate
+
+font = pygame.font.SysFont(None, 22)
+
+# Truncate a single line to fit a max pixel width
+line = truncate(font, hero.name, max_width=300)
+# → "Aldric the Unbroken" or "Aldric the Un…" if too long
+
+# Word-wrap a string into multiple lines (honours \n paragraph breaks)
+lines = wrap_text(font, description, max_width=400)
+# → ["First line of text", "second line", ...]
+
+# Wrap and cap at N lines; last line gets ellipsis if content is cut
+lines = wrap_and_truncate(font, long_text, max_width=400, max_lines=3)
+# → ["First line", "Second line", "Third lin…"]
+```
+
+Also importable from ``pygame_engine.graphics``:
+
+```python
+from pygame_engine.graphics import truncate, wrap_text, wrap_and_truncate
+```
+
+``TextBlock`` uses ``wrap_text`` internally. These utilities are useful
+anywhere you render text directly (list row renderers, custom scene draw
+calls) without a full widget.
+
+---
 ---
 
 ## Rules for game projects

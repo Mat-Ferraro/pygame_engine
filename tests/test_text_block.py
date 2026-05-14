@@ -11,6 +11,7 @@ set_rect invalidation, invisible skip. Rendering output is not asserted
 import pygame
 import pytest
 
+from pygame_engine.graphics.text_utils import wrap_text
 from pygame_engine.ui.text.text_block import TextBlock
 
 
@@ -94,14 +95,14 @@ def _make_font() -> pygame.font.Font:
 def test_wrap_empty_text_returns_single_empty_string() -> None:
     tb   = TextBlock(RECT)
     font = _make_font()
-    result = tb._wrap_text(font, "", 300)
+    result = wrap_text(font, "", 300)
     assert result == [""]
 
 
 def test_wrap_short_text_fits_on_one_line() -> None:
     tb   = TextBlock(RECT)
     font = _make_font()
-    result = tb._wrap_text(font, "Hi", 300)
+    result = wrap_text(font, "Hi", 300)
     assert len(result) == 1
     assert result[0] == "Hi"
 
@@ -110,14 +111,14 @@ def test_wrap_long_text_splits_across_lines() -> None:
     tb   = TextBlock(RECT)
     font = _make_font()
     long_text = "word " * 30  # will definitely overflow 100px
-    result = tb._wrap_text(font, long_text.strip(), 100)
+    result = wrap_text(font, long_text.strip(), 100)
     assert len(result) > 1
 
 
 def test_wrap_preserves_newlines_as_paragraph_breaks() -> None:
     tb   = TextBlock(RECT)
     font = _make_font()
-    result = tb._wrap_text(font, "line one\nline two", 300)
+    result = wrap_text(font, "line one\nline two", 300)
     assert len(result) == 2
     assert result[0] == "line one"
     assert result[1] == "line two"
@@ -126,7 +127,7 @@ def test_wrap_preserves_newlines_as_paragraph_breaks() -> None:
 def test_wrap_empty_paragraph_adds_empty_string() -> None:
     tb   = TextBlock(RECT)
     font = _make_font()
-    result = tb._wrap_text(font, "before\n\nafter", 300)
+    result = wrap_text(font, "before\n\nafter", 300)
     # Should have: "before", "", "after"
     assert "" in result
     assert "before" in result

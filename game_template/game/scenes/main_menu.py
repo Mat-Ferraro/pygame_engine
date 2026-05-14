@@ -1,6 +1,4 @@
-"""
-The first scene the player sees. Provides Start, Settings, and Quit.
-"""
+"""Main menu — Start, Settings, Quit with ConfirmDialog on quit."""
 
 from __future__ import annotations
 
@@ -24,7 +22,7 @@ class MainMenuScene(Scene):
     - Panel + column layout for button groups
     - Localisation via t() for all user-visible strings
     - Scene transitions on navigation
-    - Version label from engine
+    - ConfirmDialog on quit
     """
 
     def __init__(self, app: Application) -> None:
@@ -40,7 +38,6 @@ class MainMenuScene(Scene):
     def _build_ui(self, screen: pygame.Rect) -> None:
         theme = get_theme()
 
-        # ── Title ─────────────────────────────────────────────────────────────
         title = Label(
             anchor(screen, (500, 60), "top", margin=80),
             self._app.config.title,
@@ -49,7 +46,6 @@ class MainMenuScene(Scene):
             align="center",
         )
 
-        # ── Button panel ──────────────────────────────────────────────────────
         panel_rect = anchor(screen, (280, 240), "center", offset=(0, 30))
         panel      = Panel(panel_rect)
 
@@ -60,9 +56,8 @@ class MainMenuScene(Scene):
         )
         panel.add(Button(btn_rects[0], t("menu.start"),    on_click=self._on_start))
         panel.add(Button(btn_rects[1], t("menu.settings"), on_click=self._on_settings))
-        panel.add(Button(btn_rects[2], t("menu.quit"),     on_click=self._app.stop))
+        panel.add(Button(btn_rects[2], t("menu.quit"),     on_click=self._on_quit))
 
-        # ── Version label ─────────────────────────────────────────────────────
         version = Label(
             anchor(screen, (200, 24), "bottom_right", margin=12),
             "v1.3.0",
@@ -82,7 +77,7 @@ class MainMenuScene(Scene):
 
     def _handle_event_scene(self, event: pygame.event.Event) -> bool:
         if self._app.input_manager.was_action_pressed(actions.CANCEL):
-            self._app.stop()
+            self._on_quit()
             return True
         return False
 
@@ -111,4 +106,15 @@ class MainMenuScene(Scene):
         self._app.scene_manager.push_with(
             SettingsScene(self._app),
             SlideTransition(duration=0.3, direction="left"),
+        )
+
+    def _on_quit(self) -> None:
+        from pygame_engine.ui.feedback.confirm_dialog import ConfirmDialog
+        ConfirmDialog.push(
+            app=self._app,
+            message="Quit the game?",
+            confirm_label="Quit",
+            cancel_label="Stay",
+            on_confirm=self._app.stop,
+            danger=False,
         )
