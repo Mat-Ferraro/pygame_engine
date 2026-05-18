@@ -1,6 +1,4 @@
 """
-Slider widget for pygame_engine.
-
 A horizontal or vertical slider for selecting a value in a continuous range.
 Reads visual style from the active theme.
 
@@ -73,10 +71,12 @@ class Slider(Widget):
 
     @property
     def value(self) -> float:
+        """Return the current slider value."""
         return self._value
 
     @value.setter
     def value(self, v: float) -> None:
+        """Return the current slider value."""
         clamped = clamp(v, self.min_value, self.max_value)
         if clamped != self._value:
             self._value = clamped
@@ -144,6 +144,7 @@ class Slider(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the slider onto surface."""
         if not self.visible:
             return
 

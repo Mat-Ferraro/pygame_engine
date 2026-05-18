@@ -1,15 +1,4 @@
 """
-Per-frame input state and action query API for pygame_engine.
-
-Handles keyboard, mouse, and controller (joystick) input. All physical
-inputs map to action strings from actions.py so game code stays
-device-agnostic.
-
-Frame semantics:
-- ``was_pressed``  : became active THIS frame only
-- ``was_released`` : became inactive THIS frame only
-- ``is_down``      : currently held (includes the press frame)
-
 Key remapping
 -------------
 Use ``remap(action, key)`` to change a keyboard binding at runtime.
@@ -236,34 +225,43 @@ class InputManager:
     # ── Direct key queries ────────────────────────────────────────────────────
 
     def is_key_down(self, key: int) -> bool:
+        """Return True while the key is held down."""
         return key in self._keys_down
 
     def was_key_pressed(self, key: int) -> bool:
+        """Return True on the first frame the key was pressed."""
         return key in self._keys_pressed
 
     def was_key_released(self, key: int) -> bool:
+        """Return True on the first frame the key was released."""
         return key in self._keys_released
 
     # ── Mouse queries ─────────────────────────────────────────────────────────
 
     def get_mouse_pos(self) -> tuple[int, int]:
+        """Return the current mouse position as (x, y)."""
         return self._mouse_pos
 
     def get_mouse_delta(self) -> tuple[int, int]:
+        """Return the mouse movement since the last frame as (dx, dy)."""
         px, py = self._mouse_prev_pos
         cx, cy = self._mouse_pos
         return (cx - px, cy - py)
 
     def was_mouse_pressed(self, button: int = 1) -> bool:
+        """Return True on the first frame the mouse button was pressed."""
         return button in self._mouse_pressed
 
     def was_mouse_released(self, button: int = 1) -> bool:
+        """Return True on the first frame the mouse button was released."""
         return button in self._mouse_released
 
     def is_mouse_down(self, button: int = 1) -> bool:
+        """Return True while the mouse button is held."""
         return button in self._mouse_down
 
     def get_wheel_delta(self) -> tuple[int, int]:
+        """Return the scroll wheel delta as (horizontal, vertical)."""
         return self._wheel_delta
 
     # ── Controller queries ────────────────────────────────────────────────────
@@ -301,6 +299,7 @@ class InputManager:
 
     def is_controller_button_down(self, button: int,
                                    joystick_id: int | None = None) -> bool:
+        """Return True while the given controller button is held."""
         if joystick_id is not None:
             return (joystick_id, button) in self._ctrl_down
         return any(b == button for _, b in self._ctrl_down)
@@ -440,16 +439,20 @@ class InputManager:
 
     @property
     def bindings(self) -> dict[int, str]:
+        """Return the current action-to-key bindings dict."""
         return self._bindings
 
     @bindings.setter
     def bindings(self, value: dict[int, str]) -> None:
+        """Return the current action-to-key bindings dict."""
         self._bindings = value
 
     @property
     def controller_bindings(self) -> dict[int, str]:
+        """Return the current action-to-controller-button bindings dict."""
         return self._ctrl_bindings
 
     @controller_bindings.setter
     def controller_bindings(self, value: dict[int, str]) -> None:
+        """Return the current action-to-controller-button bindings dict."""
         self._ctrl_bindings = value

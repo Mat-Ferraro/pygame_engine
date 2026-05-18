@@ -1,6 +1,4 @@
 """
-KeyValuePanel — two-column label:value display panel.
-
 The universal pattern for presenting structured data: a left column of
 muted labels, a right column of primary values. Used in hero detail panels,
 item inspectors, settings summaries, and stat displays.
@@ -92,14 +90,17 @@ class KeyValuePanel(Widget):
         self._rows.append((label, str(value)))
 
     def clear(self) -> None:
+        """Remove all rows from the panel."""
         self._rows = []
 
     def set_rect(self, rect: pygame.Rect) -> None:
+        """Update the panel rect."""
         self.rect = rect
 
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the key-value panel onto surface."""
         if not self.visible:
             return
 

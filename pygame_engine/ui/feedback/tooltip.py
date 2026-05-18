@@ -1,6 +1,4 @@
 """
-ui/feedback/tooltip.py
-
 Tooltip widget for pygame_engine.
 
 A small floating label that appears near the mouse cursor to provide
@@ -102,10 +100,12 @@ class Tooltip(Widget):
 
     @property
     def text(self) -> str:
+        """Return the current tooltip text."""
         return self._text
 
     @text.setter
     def text(self, value: str) -> None:
+        """Return the current tooltip text."""
         if value != self._text:
             self._text = value
             self._dirty = True
@@ -132,6 +132,7 @@ class Tooltip(Widget):
     # ── Frame methods ─────────────────────────────────────────────────────────
 
     def update(self, dt: float) -> None:
+        """Update tooltip visibility based on hover state."""
         if not self.visible:
             return
         if self._fade_in_duration > 0:
@@ -140,6 +141,7 @@ class Tooltip(Widget):
             self._alpha = 1.0
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the tooltip onto surface if visible."""
         if not self.visible or self._alpha <= 0:
             return
         if self._dirty:

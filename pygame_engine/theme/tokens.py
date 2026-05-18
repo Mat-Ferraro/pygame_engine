@@ -1,6 +1,4 @@
 """
-theme/tokens.py
-
 Raw design tokens for pygame_engine.
 
 Tokens are the smallest named design values — the atoms of the theme
@@ -25,6 +23,7 @@ from __future__ import annotations
 # Named by role/shade, not by widget. Widgets reference these through defaults.
 
 class Colours:
+    """Theme colour palette — backgrounds, foregrounds, and accent colours."""
     # Dark backgrounds
     BG_DARK      = (15,  15,  20)
     BG_BASE      = (22,  22,  30)
@@ -67,6 +66,7 @@ class Colours:
 # ── Spacing scale (pixels) ────────────────────────────────────────────────────
 
 class Spacing:
+    """Theme spacing values — padding, gaps, and margins in pixels."""
     XS  = 4
     SM  = 8
     MD  = 12
@@ -78,6 +78,7 @@ class Spacing:
 # ── Typography ────────────────────────────────────────────────────────────────
 
 class Typography:
+    """Theme typography settings — font family and size scale."""
     FONT_FAMILY = "segoeui,helvetica,arial"
 
     SIZE_XS  = 12
@@ -91,6 +92,7 @@ class Typography:
 # ── Radii (border-radius values in pixels) ────────────────────────────────────
 
 class Radii:
+    """Theme border radius values in pixels."""
     NONE   = 0
     SM     = 3
     MD     = 6
@@ -101,6 +103,7 @@ class Radii:
 # ── Border widths ─────────────────────────────────────────────────────────────
 
 class Borders:
+    """Theme border width values in pixels."""
     NONE   = 0
     THIN   = 1
     MEDIUM = 2
@@ -110,6 +113,7 @@ class Borders:
 # ── Timing (milliseconds) ─────────────────────────────────────────────────────
 
 class Timing:
+    """Theme animation timing values in seconds."""
     INSTANT  = 0
     FAST     = 80
     NORMAL   = 150

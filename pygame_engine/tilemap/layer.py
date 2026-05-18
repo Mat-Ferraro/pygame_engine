@@ -1,6 +1,4 @@
 """
-TileLayer — a single named layer of tile indices.
-
 A Tilemap holds one or more TileLayers rendered in order (bottom to top).
 Each layer is a 2D grid of integers where:
   -1 (or any negative) = empty cell (transparent, nothing drawn)
@@ -51,14 +49,17 @@ class TileLayer:
 
     @property
     def name(self) -> str:
+        """Return the name of this tile layer."""
         return self._name
 
     @property
     def rows(self) -> int:
+        """Return the number of tile rows in this layer."""
         return self._rows
 
     @property
     def cols(self) -> int:
+        """Return the number of tile columns in this layer."""
         return self._cols
 
     # ── Tile access ───────────────────────────────────────────────────────────

@@ -1,6 +1,4 @@
 """
-utils/timers.py
-
 Timer utilities for pygame_engine.
 
 Provides lightweight time-tracking helpers used by animations, cooldowns,
@@ -119,6 +117,7 @@ class Timer:
 
     @duration.setter
     def duration(self, value: float) -> None:
+        """Return the total duration of this timer in seconds."""
         self._duration = value
 
 

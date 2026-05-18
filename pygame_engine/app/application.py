@@ -286,14 +286,8 @@ class Application:
         """
         Handle a window resize event.
 
-        Recreates the display surface at the new size. Scenes and widgets
-        use the surface dimensions they receive in ``render()`` each frame,
-        so no further notification is needed — they adapt naturally.
-
-        After recreating the surface, notifies the active scene via
-        ``scene_manager.notify_resize()`` and fires ``window.resized``
-        on the event bus. Scenes override ``on_resize()`` to rebuild
-        their layout. Subscribe to ``window.resized`` for non-scene code.
+        Recreates the display surface, emits ``window.resized`` on the
+        event bus, and notifies the current scene via notify_resize.
 
         Args:
             width:  New window width in pixels.
@@ -304,63 +298,24 @@ class Application:
             pygame.RESIZABLE,
             vsync=1 if self._config.vsync else 0,
         )
-
-        # Notify the active scene so it can rebuild its layout.
+        from pygame_engine.events import bus as _bus
+        _bus.emit("window.resized", width=width, height=height)
         if self._scene_manager is not None:
             self._scene_manager.notify_resize(width, height)
 
-        # Fire a bus event so any subscriber can react.
-        _event_bus.emit("window.resized", width=width, height=height)
-
-
-    def set_resolution(self, width: int, height: int) -> None:
-        """
-        Change the window resolution at runtime.
-
-        Recreates the display surface, notifies the active scene via
-        ``on_resize()``, and fires ``window.resized`` on the event bus.
-
-        Args:
-            width:  New window width in pixels.
-            height: New window height in pixels.
-        """
-        self._on_resize(width, height)
-
-    def set_fullscreen(self, fullscreen: bool) -> None:
-        """
-        Toggle fullscreen mode at runtime.
-
-        Recreates the display surface, notifies the active scene via
-        ``on_resize()``, and fires ``window.fullscreen_changed`` on the bus.
-
-        Args:
-            fullscreen: True to enter fullscreen, False for windowed.
-        """
-        if self._display_surface is None:
-            return
-        w, h  = self._display_surface.get_size()
-        flags = pygame.FULLSCREEN if fullscreen else (
-            pygame.RESIZABLE if self._config.resizable else 0
-        )
-        self._display_surface = pygame.display.set_mode(
-            (w, h), flags,
-            vsync=1 if self._config.vsync else 0,
-        )
-        # Read actual size after mode change (may differ in fullscreen)
-        nw, nh = self._display_surface.get_size()
-        if self._scene_manager is not None:
-            self._scene_manager.notify_resize(nw, nh)
-        _event_bus.emit("window.fullscreen_changed", fullscreen=fullscreen)
-        _event_bus.emit("window.resized", width=nw, height=nh)
-
-    def toggle_fullscreen(self) -> None:
-        """Toggle fullscreen on/off."""
-        if self._display_surface is None:
-            return
-        currently = bool(self._display_surface.get_flags() & pygame.FULLSCREEN)
-        self.set_fullscreen(not currently)
-
     # ── Delta-time ────────────────────────────────────────────────────────────
+
+    @property
+    def screen_rect(self) -> pygame.Rect:
+        """
+        Return a Rect covering the full screen at the current size.
+
+        Safe to call before run() — returns config dimensions.
+        After a resize, reflects the new size.
+        """
+        if self._display_surface is not None:
+            return self._display_surface.get_rect()
+        return pygame.Rect(0, 0, self._config.width, self._config.height)
 
     def _compute_dt(self, raw_ms: int) -> float:
         """Convert raw milliseconds from the clock into a clamped dt in seconds."""
@@ -415,23 +370,6 @@ class Application:
                 "input_manager is not available before Application.run() is called."
             )
         return self._input_manager
-
-    @property
-    def screen_rect(self) -> "pygame.Rect":
-        """
-        A rect covering the full screen at the current resolution.
-
-        Equivalent to ``pygame.Rect(0, 0, config.width, config.height)``.
-        Use this in ``on_enter`` instead of hardcoding dimensions::
-
-            screen = self._app.screen_rect
-            panel  = Panel(anchor(screen, (320, 400), "center"))
-
-        Always reflects the current window size, even after resize.
-        """
-        if self._display_surface is not None:
-            return self._display_surface.get_rect()
-        return pygame.Rect(0, 0, self._config.width, self._config.height)
 
     @property
     def config(self) -> AppConfig:

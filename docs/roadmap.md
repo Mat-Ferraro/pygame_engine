@@ -1,4 +1,13 @@
-## Purpose
+> **Note on Phase Numbering**
+> This document tracks the original development phases (v1.x, Phases 1–13).
+> Future development phases are defined in `IMPLEMENTATION_ORDER.md`, which
+> uses different phase numbering for the v2.0 design work (Phase 1 = Observable
+> upgrade, Phase 2 = Engine infrastructure, etc.). These are separate numbering
+> schemes for separate eras of development.
+
+---
+
+---
 
 Defines the development path for `pygame_engine` and keeps development
 intentional, preventing random feature drift.

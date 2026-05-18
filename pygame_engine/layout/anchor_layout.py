@@ -1,6 +1,4 @@
 """
-AnchorLayout — pin widgets to screen edges and recompute on resize.
-
 Unlike the stateless ``anchor()`` function, ``AnchorLayout`` remembers
 the rules for each widget so it can recompute all positions when the
 window resizes.

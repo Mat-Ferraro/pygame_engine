@@ -1,6 +1,4 @@
 """
-LogPanel — scrollable text log with append() and auto-scroll.
-
 A read-only panel that accumulates lines of text and displays them
 newest-at-bottom. Auto-scrolls to follow new entries by default.
 Used for event logs, combat narration, training results, status feeds.
@@ -106,11 +104,13 @@ class LogPanel(Widget):
         self._scroll_y = 0.0
 
     def scroll_to_bottom(self) -> None:
+        """Scroll to the most recent log entry."""
         self._scroll_y    = self._max_scroll()
         self._auto_scroll = True
 
     @property
     def line_count(self) -> int:
+        """Return the current number of log lines."""
         return len(self._lines)
 
     # ── Events ────────────────────────────────────────────────────────────────
@@ -133,6 +133,7 @@ class LogPanel(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the log panel onto surface."""
         if not self.visible:
             return
 

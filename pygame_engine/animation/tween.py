@@ -1,6 +1,4 @@
 """
-animation/tween.py
-
 Tween — single-value animator for pygame_engine.
 
 A Tween moves a float from ``start`` to ``end`` over ``duration`` seconds
@@ -196,12 +194,15 @@ class Tween:
 
     @property
     def start_value(self) -> float:
+        """Return the starting value of this tween."""
         return self._start
 
     @property
     def end_value(self) -> float:
+        """Return the ending value of this tween."""
         return self._end
 
     @property
     def duration(self) -> float:
+        """Return the total duration of this tween in seconds."""
         return self._duration

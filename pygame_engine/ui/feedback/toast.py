@@ -1,6 +1,4 @@
 """
-ui/feedback/toast.py
-
 Toast notification widget for pygame_engine.
 
 A short-lived message that appears briefly then fades out automatically.
@@ -111,10 +109,12 @@ class Toast(Widget):
 
     @property
     def text(self) -> str:
+        """Return the current toast message text."""
         return self._text
 
     @text.setter
     def text(self, value: str) -> None:
+        """Return the current toast message text."""
         if value != self._text:
             self._text = value
             self._dirty = True
@@ -141,12 +141,14 @@ class Toast(Widget):
             self._enter_phase(_PHASE_FADE_OUT)
 
     def set_rect(self, rect: pygame.Rect) -> None:
+        """Update the toast rect and reposition content."""
         self.rect  = rect
         self._dirty = True
 
     # ── Frame methods ─────────────────────────────────────────────────────────
 
     def update(self, dt: float) -> None:
+        """Advance the toast lifecycle — fade in, hold, fade out."""
         if self._phase == _PHASE_IDLE or self._phase == _PHASE_EXPIRED:
             return
 
@@ -171,6 +173,7 @@ class Toast(Widget):
                 self._alpha   = 0.0
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the toast onto surface."""
         if not self.visible or self._alpha <= 0:
             return
         if self._dirty:

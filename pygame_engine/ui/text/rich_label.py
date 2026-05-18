@@ -1,9 +1,5 @@
 """
-RichLabel — inline-markup text rendering for pygame_engine.
-
-Renders text with BBCode-style inline markup tags:
-
-    [b]bold text[/b]
+[b]bold text[/b]
     [i]italic text[/i]
     [b][i]bold italic[/i][/b]
     [color=#ff4444]red text[/color]
@@ -207,31 +203,37 @@ class RichLabel(Widget):
 
     @property
     def text(self) -> str:
+        """Return the current rich text markup string."""
         return self._text
 
     @text.setter
     def text(self, value: str) -> None:
+        """Return the current rich text markup string."""
         if value != self._text:
             self._text  = value
             self._dirty = True
 
     @property
     def align(self) -> str:
+        """Return the current text alignment."""
         return self._align
 
     @align.setter
     def align(self, value: str) -> None:
+        """Return the current text alignment."""
         if value != self._align:
             self._align = value
             self._dirty = True
 
     def set_rect(self, rect: pygame.Rect) -> None:
+        """Update the rich label rect and invalidate the layout cache."""
         self.rect   = rect
         self._dirty = True
 
     # ── Rendering ─────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the rich label onto surface."""
         if not self.visible:
             return
         if self._dirty:

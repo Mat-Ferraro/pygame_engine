@@ -1,6 +1,4 @@
 """
-File-driven theme loading for pygame_engine.
-
 Loads a JSON theme file and merges it over the default theme, allowing
 designers to iterate on visual style without touching Python code.
 
@@ -122,7 +120,7 @@ def theme_to_dict(theme: Theme) -> dict:
     Useful for inspecting the active theme or generating a starter file:
 
         import json
-        print(json.dumps(theme_to_dict(get_theme()), indent=2))
+        return json.dumps(theme_to_dict(get_theme()), indent=2)  # was print() — removed per LOGGING_STANDARDS
 
     Args:
         theme: The Theme to serialise.

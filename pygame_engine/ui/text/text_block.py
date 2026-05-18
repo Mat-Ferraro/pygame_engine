@@ -1,10 +1,4 @@
 """
-Multi-line wrapped text widget for pygame_engine.
-
-TextBlock is the natural companion to Label:
-- Label = single-line text
-- TextBlock = wrapped multi-line text
-
 It uses theme label defaults unless explicit overrides are supplied.
 """
 
@@ -55,49 +49,59 @@ class TextBlock(Widget):
 
     @property
     def text(self) -> str:
+        """Return the current text content."""
         return self._text
 
     @text.setter
     def text(self, value: str) -> None:
+        """Return the current text content."""
         if value != self._text:
             self._text  = value
             self._dirty = True
 
     @property
     def align(self) -> str:
+        """Return the current text alignment."""
         return self._align
 
     @align.setter
     def align(self, value: str) -> None:
+        """Return the current text alignment."""
         if value != self._align:
             self._align = value
             self._dirty = True
 
     @property
     def padding(self) -> int:
+        """Return the current padding in pixels."""
         return self._padding
 
     @padding.setter
     def padding(self, value: int) -> None:
+        """Return the current padding in pixels."""
         if value != self._padding:
             self._padding = value
             self._dirty   = True
 
     @property
     def line_spacing(self) -> int:
+        """Return the additional line spacing in pixels."""
         return self._line_spacing
 
     @line_spacing.setter
     def line_spacing(self, value: int) -> None:
+        """Return the additional line spacing in pixels."""
         if value != self._line_spacing:
             self._line_spacing = value
             self._dirty        = True
 
     def set_rect(self, rect: pygame.Rect) -> None:
+        """Update the text block rect and mark the cache as dirty."""
         super().set_rect(rect)
         self._dirty = True
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the text block onto surface, rebuilding the cache if dirty."""
         if not self.visible:
             return
         if self._dirty or self._cache_surface is None:

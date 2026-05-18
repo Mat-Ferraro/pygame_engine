@@ -1,10 +1,4 @@
 """
-ConfirmDialog — modal overlay scene for destructive action confirmation.
-
-Presents a centred dialog over a dimmed background asking the user to
-confirm or cancel an action. The dialog pushes itself onto the scene
-stack and pops when the user responds.
-
 ConfirmDialog is intentionally NOT a subclass of Scene — doing so would
 create a circular import (scene → ui.Widget → ui.__init__ → ConfirmDialog
 → scene). Instead it implements the Scene protocol (handle_event, update,
@@ -113,20 +107,23 @@ class ConfirmDialog:
 
         class _Adapter(Scene):
             """Thin Scene wrapper that delegates to the ConfirmDialog."""
-            def __init__(self_, dlg):
+            def __init__(self_, dlg) -> None:
                 super().__init__()
                 self_._dlg = dlg
 
             def on_enter(self_):
+                """Initialise button layout when the dialog becomes active."""
                 pass
 
             def _handle_event_scene(self_, event):
                 return self_._dlg._handle_event(event)
 
             def update(self_, dt):
+                """Update button hover state."""
                 super().update(dt)
 
             def render(self_, surface):
+                """Draw the dialog overlay and buttons onto surface."""
                 self_._dlg._render(surface)
                 super().render(surface)
 

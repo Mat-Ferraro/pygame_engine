@@ -1,4 +1,11 @@
-# Accepted Decisions
+> **Note**
+> This document records architecture decisions made during v1.x development.
+> For the current authoritative architecture, see `DESIGN_SPEC.md`.
+> For the current enforceable restrictions, see `RESTRICTIONS.md`.
+> Some decisions here (notably #10 Theme Access, #15 Version One Boundary)
+> have been superseded by the v2.0 design work documented in `DESIGN_SPEC.md`.
+
+---
 
 ## Purpose
 

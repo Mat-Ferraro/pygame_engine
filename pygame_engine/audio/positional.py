@@ -1,6 +1,4 @@
 """
-2D positional audio for pygame_engine.
-
 Simulates distance-based volume falloff and stereo panning by wrapping
 pygame's mixer channel API. Not true 3D audio — a convincing 2D
 approximation using left/right channel volume.
@@ -87,6 +85,7 @@ class PositionalSource:
 
     @property
     def is_playing(self) -> bool:
+        """Return True if this source is currently playing."""
         return self._channel is not None and self._channel.get_busy()
 
 
@@ -177,14 +176,17 @@ class PositionalAudio:
 
     @property
     def max_distance(self) -> float:
+        """Return the maximum audible distance in world units."""
         return self._max_distance
 
     @max_distance.setter
     def max_distance(self, value: float) -> None:
+        """Return the maximum audible distance in world units."""
         self._max_distance = max(1.0, value)
 
     @property
     def listener_position(self) -> tuple[float, float]:
+        """Return the current listener position as (x, y)."""
         return (self._listener_x, self._listener_y)
 
     # ── Internal ──────────────────────────────────────────────────────────────

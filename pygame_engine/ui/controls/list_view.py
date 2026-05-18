@@ -1,6 +1,4 @@
 """
-ListView — scrollable list with selectable rows and custom row rendering.
-
 The most common pattern in data-driven UIs: a scrollable panel containing
 a list of items where each row can be hovered, selected, and clicked.
 Row appearance is fully customisable via a ``row_renderer`` callable.
@@ -143,9 +141,11 @@ class ListView(Widget):
         self._selected_id = None
 
     def scroll_to_top(self) -> None:
+        """Scroll to the first item in the list."""
         self._scroll_y = 0.0
 
     def scroll_to_bottom(self) -> None:
+        """Scroll to the last item in the list."""
         self._scroll_y = self._max_scroll()
 
     # ── Events ────────────────────────────────────────────────────────────────
@@ -180,6 +180,7 @@ class ListView(Widget):
         return False
 
     def update(self, dt: float) -> None:
+        """Update hover state and scroll position."""
         mouse = pygame.mouse.get_pos()
         self._hovered_i = (
             self._index_at(mouse) if self.rect.collidepoint(mouse) else -1
@@ -188,6 +189,7 @@ class ListView(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the list view onto surface."""
         if not self.visible:
             return
 

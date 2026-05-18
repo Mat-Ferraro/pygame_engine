@@ -1,6 +1,4 @@
 """
-particles/emitter.py
-
 Particle emitter for pygame_engine.
 
 ``Emitter`` spawns, updates, and renders particles. It handles:
@@ -43,7 +41,6 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Union
 
 import pygame
 
@@ -51,11 +48,8 @@ from pygame_engine.particles.particle import Particle
 
 
 # Type aliases for parameter ranges
-_Range = Union[float, tuple[float, float]]
-_ColourRange = Union[
-    tuple[int, int, int],
-    tuple[tuple[int, int, int], tuple[int, int, int]],
-]
+_Range = float | tuple[float, float]
+_ColourRange = tuple[int, int, int] | tuple[tuple[int, int, int], tuple[int, int, int]]
 
 
 def _rand(r: _Range) -> float:

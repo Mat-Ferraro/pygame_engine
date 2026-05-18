@@ -1,11 +1,4 @@
 """
-Tilemap — the core tile map class for pygame_engine.
-
-A Tilemap holds one Tileset and one or more named TileLayers. It handles:
-  - rendering layers to a surface (camera-culled)
-  - world-space geometry (pixel positions from tile coordinates)
-  - collision queries against a designated collision layer
-
 Usage::
 
     from pygame_engine.tilemap import Tilemap, Tileset
@@ -98,10 +91,12 @@ class Tilemap:
 
     @property
     def tile_w(self) -> int:
+        """Return the width of a single tile in pixels."""
         return self._tile_w
 
     @property
     def tile_h(self) -> int:
+        """Return the height of a single tile in pixels."""
         return self._tile_h
 
     @property
@@ -132,14 +127,17 @@ class Tilemap:
 
     @property
     def world_offset(self) -> tuple[int, int]:
+        """Return the world-space offset of the tilemap origin."""
         return self._world_offset
 
     @world_offset.setter
     def world_offset(self, offset: tuple[int, int]) -> None:
+        """Return the world-space offset of the tilemap origin."""
         self._world_offset = offset
 
     @property
     def tileset(self) -> Tileset:
+        """Return the Tileset used by this tilemap."""
         return self._tileset
 
     # ── Layer management ──────────────────────────────────────────────────────
@@ -168,6 +166,7 @@ class Tilemap:
 
     @property
     def layer_names(self) -> list[str]:
+        """Return a list of all layer names in draw order."""
         return [layer.name for layer in self._layers]
 
     def set_collision_layer(self, name: str) -> None:

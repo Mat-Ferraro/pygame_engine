@@ -1,6 +1,4 @@
 """
-Engine-level boolean runtime flags for pygame_engine.
-
 ``RuntimeFlags`` holds a small set of named boolean switches that
 control engine behaviour at runtime. Each flag has a clear, specific
 purpose. This is not a general-purpose key-value store.
@@ -36,7 +34,7 @@ Instead, create a separate flags object in the game project:
     from pygame_engine.state.runtime_flags import RuntimeFlags
 
     class GameFlags(RuntimeFlags):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self.show_hitboxes: bool = False
             self.god_mode:      bool = False

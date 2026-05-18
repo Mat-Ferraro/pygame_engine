@@ -1,6 +1,4 @@
 """
-animation/animator.py
-
 Sprite animation data and playback for pygame_engine.
 
 Two classes:
@@ -89,30 +87,37 @@ class SpriteAnimation:
 
     @property
     def name(self) -> str:
+        """Return the name identifier of this animation."""
         return self._name
 
     @property
     def frames(self) -> list[pygame.Surface]:
+        """Return the list of frames in this animation."""
         return self._frames
 
     @property
     def frame_count(self) -> int:
+        """Return the total number of frames."""
         return len(self._frames)
 
     @property
     def durations(self) -> list[float]:
+        """Return the per-frame durations in seconds."""
         return self._durations
 
     @property
     def total_duration(self) -> float:
+        """Return the total duration of one full animation cycle in seconds."""
         return sum(self._durations)
 
     @property
     def loop(self) -> bool:
+        """Return True if the animation loops after completing."""
         return self._loop
 
     @property
     def ping_pong(self) -> bool:
+        """Return True if the animation reverses direction at the end."""
         return self._ping_pong
 
     def __repr__(self) -> str:

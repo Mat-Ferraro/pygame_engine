@@ -1,6 +1,4 @@
 """
-Badge — small coloured pill label with semantic styles.
-
 A Badge is a compact, non-interactive status indicator that communicates
 a category, state, or count at a glance. Common uses: hero class labels,
 status indicators (Injured, Expiring, Ready), item rarity, tier markers.
@@ -72,31 +70,37 @@ class Badge(Widget):
 
     @property
     def text(self) -> str:
+        """Return the current badge text."""
         return self._text
 
     @text.setter
     def text(self, value: str) -> None:
+        """Return the current badge text."""
         if value != self._text:
             self._text  = value
             self._dirty = True
 
     @property
     def style(self) -> str:
+        """Return the current badge style name."""
         return self._style
 
     @style.setter
     def style(self, value: str) -> None:
+        """Return the current badge style name."""
         if value != self._style:
             self._style = value
             self._dirty = True
 
     def set_rect(self, rect: pygame.Rect) -> None:
+        """Update the badge rect."""
         self.rect   = rect
         self._dirty = True
 
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the badge onto surface."""
         if not self.visible:
             return
         if self._dirty:

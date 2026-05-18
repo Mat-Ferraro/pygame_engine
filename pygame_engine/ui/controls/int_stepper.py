@@ -1,6 +1,4 @@
 """
-IntStepper — label with − and + buttons for discrete integer stepping.
-
 Used anywhere a bounded integer needs to be adjusted by hand: contract
 campaign count, team size, difficulty, volume level, etc.
 
@@ -80,10 +78,12 @@ class IntStepper(Widget):
 
     @property
     def value(self) -> int:
+        """Return the current stepper value."""
         return self._value
 
     @value.setter
     def value(self, v: int) -> None:
+        """Return the current stepper value."""
         clamped = max(self.min_value, min(self.max_value, v))
         if clamped != self._value:
             self._value = clamped
@@ -91,9 +91,11 @@ class IntStepper(Widget):
                 self.on_change(self._value)
 
     def increment(self) -> None:
+        """Increase the value by one step, clamped to maximum."""
         self.value = self._value + self.step
 
     def decrement(self) -> None:
+        """Decrease the value by one step, clamped to minimum."""
         self.value = self._value - self.step
 
     # ── Events ────────────────────────────────────────────────────────────────
@@ -134,6 +136,7 @@ class IntStepper(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the stepper onto surface."""
         if not self.visible:
             return
 

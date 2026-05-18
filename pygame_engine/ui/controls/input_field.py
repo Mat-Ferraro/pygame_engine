@@ -1,6 +1,4 @@
 """
-Single-line text input widget for pygame_engine.
-
 Supports typing, cursor movement, backspace, placeholder text, and
 focus management. Uses pygame's TEXTINPUT event system for correct
 Unicode and IME handling.
@@ -217,6 +215,7 @@ class InputField(Widget):
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt: float) -> None:
+        """Update cursor blink and focused state."""
         if self.focused:
             self._cursor_t += dt
             if self._cursor_t >= self.CURSOR_BLINK_RATE:
@@ -226,6 +225,7 @@ class InputField(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the input field onto surface."""
         if not self.visible:
             return
 

@@ -1,6 +1,4 @@
 """
-Camera for pygame_engine.
-
 A 2D camera that converts between world-space and screen-space coordinates.
 Supports smooth target following, zoom, and trauma-based screen shake.
 
@@ -93,27 +91,33 @@ class Camera:
 
     @position.setter
     def position(self, pos: tuple[float, float]) -> None:
+        """Return the current camera position in world space."""
         self._pos_x, self._pos_y = float(pos[0]), float(pos[1])
         self._clamp_to_bounds()
 
     @property
     def zoom(self) -> float:
+        """Return the current zoom level."""
         return self._zoom
 
     @zoom.setter
     def zoom(self, value: float) -> None:
+        """Return the current zoom level."""
         self._zoom = max(0.01, value)
 
     @property
     def viewport_size(self) -> tuple[int, int]:
+        """Return the viewport size as (width, height)."""
         return (self._vp_w, self._vp_h)
 
     @viewport_size.setter
     def viewport_size(self, size: tuple[int, int]) -> None:
+        """Return the viewport size as (width, height)."""
         self._vp_w, self._vp_h = size
 
     @property
     def trauma(self) -> float:
+        """Return the current trauma level (0.0–1.0)."""
         return self._trauma
 
     def set_world_bounds(self, bounds: pygame.Rect | None) -> None:

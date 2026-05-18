@@ -1,8 +1,4 @@
 """
-ui/text/label.py
-
-Label widget for pygame_engine.
-
 Renders a single line of text within its rect. Reads default style
 values from the active theme. Per-instance overrides can be passed at
 construction and take precedence over theme values.
@@ -90,41 +86,49 @@ class Label(Widget):
 
     @property
     def text(self) -> str:
+        """Return the current label text."""
         return self._text
 
     @text.setter
     def text(self, value: str) -> None:
+        """Return the current label text."""
         if value != self._text:
             self._text = value
             self._dirty = True
 
     @property
     def colour(self) -> tuple[int, int, int]:
+        """Return the current text colour."""
         return self._colour
 
     @colour.setter
     def colour(self, value: tuple[int, int, int]) -> None:
+        """Return the current text colour."""
         if value != self._colour:
             self._colour = value
             self._dirty = True
 
     @property
     def align(self) -> str:
+        """Return the current text alignment."""
         return self._align
 
     @align.setter
     def align(self, value: str) -> None:
+        """Return the current text alignment."""
         if value != self._align:
             self._align = value
             self._dirty = True
 
     def set_rect(self, rect: pygame.Rect) -> None:
+        """Update the label rect and reflow text alignment."""
         self.rect = rect
         self._dirty = True
 
     # ── Frame methods ─────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the label onto surface."""
         if not self.visible:
             return
         if self._dirty:

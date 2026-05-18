@@ -1,6 +1,4 @@
 """
-FlexRow and FlexColumn — proportional layout helpers for pygame_engine.
-
 Distribute a list of widgets horizontally or vertically within a bounds
 rect using fixed sizes, proportional weights, or a mix of both. Recompute
 on resize by calling ``layout(new_bounds)`` again.
@@ -161,6 +159,7 @@ class FlexRow:
 
     @property
     def item_count(self) -> int:
+        """Return the number of items in this flex layout."""
         return len(self._items)
 
     def clear(self) -> None:
@@ -273,6 +272,7 @@ class FlexColumn:
 
     @property
     def item_count(self) -> int:
+        """Return the number of items in this flex layout."""
         return len(self._items)
 
     def clear(self) -> None:

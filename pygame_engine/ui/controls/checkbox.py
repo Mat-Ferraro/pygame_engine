@@ -1,6 +1,4 @@
 """
-Checkbox widget for pygame_engine.
-
 A labelled boolean toggle. Reads visual style from the active theme.
 
 Usage::
@@ -60,10 +58,12 @@ class Checkbox(Widget):
 
     @property
     def checked(self) -> bool:
+        """Return the current checked state."""
         return self._checked
 
     @checked.setter
     def checked(self, value: bool) -> None:
+        """Return the current checked state."""
         if value != self._checked:
             self._checked = value
             if self.on_change:
@@ -91,6 +91,7 @@ class Checkbox(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the checkbox onto surface."""
         if not self.visible:
             return
 

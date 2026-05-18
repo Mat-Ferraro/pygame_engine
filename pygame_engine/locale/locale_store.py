@@ -1,6 +1,4 @@
 """
-LocaleStore — string key lookup with locale switching and pluralisation.
-
 The engine renders strings it's given. LocaleStore determines which
 strings get passed. It is a thin lookup layer that sits between your
 game's string keys and the UI widgets that display them.
@@ -138,6 +136,7 @@ class LocaleStore:
         return sorted(self._locales.keys())
 
     def has_locale(self, locale: str) -> bool:
+        """Return True if translations for the given locale code are loaded."""
         return locale in self._locales
 
     # ── Translation ───────────────────────────────────────────────────────────

@@ -1,6 +1,4 @@
 """
-ui/controls/progress_bar.py
-
 ProgressBar widget for pygame_engine.
 
 Displays a filled bar representing a ratio from 0.0 to 1.0.
@@ -99,15 +97,18 @@ class ProgressBar(Widget):
 
     @value.setter
     def value(self, v: float) -> None:
+        """Return the current fill value in the range 0.0–1.0."""
         self._value = max(0.0, min(1.0, v))
 
     @property
     def direction(self) -> str:
+        """Return the fill direction ('horizontal' or 'vertical')."""
         return self._direction
 
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the progress bar onto surface."""
         if not self.visible:
             return
 

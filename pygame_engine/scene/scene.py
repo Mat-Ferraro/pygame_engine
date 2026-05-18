@@ -129,19 +129,10 @@ class Scene:
 
     def on_resize(self, width: int, height: int) -> None:
         """
-        Called when the application window is resized.
+        Called when the window is resized.
 
-        Fired on the current top-of-stack scene immediately after the
-        display surface is recreated at the new size. Override to rebuild
-        any layout rects that were computed against the old dimensions::
-
-            def on_resize(self, width: int, height: int) -> None:
-                screen = pygame.Rect(0, 0, width, height)
-                self._panel.set_rect(anchor(screen, (400, 300), "center"))
-
-        The default implementation is a no-op. Scenes that compute layout
-        in ``render()`` using ``surface.get_rect()`` do not need to override
-        this.
+        Override to rebuild layout rects computed against the old size.
+        Only the top-of-stack scene receives this call.
 
         Args:
             width:  New window width in pixels.

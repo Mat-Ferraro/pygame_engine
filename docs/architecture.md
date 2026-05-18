@@ -1,3 +1,15 @@
+> **Note**
+> This document describes the existing engine layout as of v1.3.
+> The comprehensive design specification for v2.0 (three-circle architecture,
+> restrictions, implementation order, and full system designs) lives in
+> `DESIGN_SPEC.md`. Read `DESIGN_SPEC.md` for the authoritative design reference.
+
+---
+
+---
+
+---
+
 It provides: application loop, scene flow, UI toolkit, layout helpers,
 theme system, input abstraction, assets, audio, animation, particles,
 camera, tilemap, dialogue, pathfinding, lighting, localisation, and debug tools.

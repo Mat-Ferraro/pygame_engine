@@ -1,6 +1,4 @@
 """
-scene/transitions.py
-
 Scene transition effects for pygame_engine.
 
 Transitions are visual effects that play during a scene change. They
@@ -185,6 +183,7 @@ class FadeTransition(Transition):
         surface:       pygame.Surface,
         scene_surface: pygame.Surface,
     ) -> None:
+        """Draw the transition overlay onto surface for the current progress."""
         p = self.progress   # 0.0 → 1.0
 
         if p < 0.5:
@@ -245,6 +244,7 @@ class SlideTransition(Transition):
         surface:       pygame.Surface,
         scene_surface: pygame.Surface,
     ) -> None:
+        """Draw the transition overlay onto surface for the current progress."""
         p  = self.progress
         sw = surface.get_width()
         sh = surface.get_height()
@@ -301,6 +301,7 @@ class CrossfadeTransition(Transition):
         surface:       pygame.Surface,
         scene_surface: pygame.Surface,
     ) -> None:
+        """Draw the transition overlay onto surface for the current progress."""
         p = self.progress   # 0.0 → 1.0
 
         # Incoming scene at full size, fading in

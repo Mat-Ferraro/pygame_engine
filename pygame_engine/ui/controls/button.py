@@ -1,6 +1,4 @@
 """
-ui/controls/button.py
-
 Button widget for pygame_engine.
 
 Reads all visual style values from the active theme. Per-instance
@@ -73,13 +71,16 @@ class Button(Widget):
 
     @property
     def label(self) -> str:
+        """Return the current button label text."""
         return self._label.text
 
     @label.setter
     def label(self, value: str) -> None:
+        """Return the current button label text."""
         self._label.text = value
 
     def set_rect(self, rect: pygame.Rect) -> None:
+        """Update the button rect and reposition the internal label."""
         super().set_rect(rect)
         self._label.set_rect(pygame.Rect(rect))
 
@@ -114,6 +115,7 @@ class Button(Widget):
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt: float) -> None:
+        """Update hover and pressed state from the current mouse position."""
         theme = get_theme()
         self._label.colour = (
             theme.button.text_disabled.colour
@@ -124,6 +126,7 @@ class Button(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the button onto surface."""
         if not self.visible:
             return
 

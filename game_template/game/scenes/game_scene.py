@@ -1,6 +1,4 @@
 """
-Main gameplay scene. Replace placeholder content with your game logic.
-
 Pre-wired with stubs for the most common 2D game systems:
 - Camera (follow player, world bounds)
 - Tilemap (rendering + collision)
@@ -164,6 +162,11 @@ class GameScene(Scene):
         )
 
     def update(self, dt: float) -> None:
+        # When implementing animations that change with time, always check
+        # app.reduced_motion first per ACCESSIBILITY_STANDARDS.md Section 4:
+#           if not self._app.reduced_motion:
+#               self._t += dt
+
         if self._camera:
             self._camera.update(dt)
         super().update(dt)

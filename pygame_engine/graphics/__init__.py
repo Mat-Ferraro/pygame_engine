@@ -1,6 +1,4 @@
 """
-pygame_engine.graphics
-
 Rendering helpers and surface utilities.
 
 Public API::
@@ -18,11 +16,6 @@ from pygame_engine.graphics.draw_utils import (
     draw_rect_bordered,
     draw_surface_style,
     draw_vertical_line,
-)
-from pygame_engine.graphics.text_utils import (
-    truncate,
-    wrap_and_truncate,
-    wrap_text,
 )
 from pygame_engine.graphics.nine_slice import (
     NineSlicePanel,
@@ -42,11 +35,13 @@ from pygame_engine.graphics.surfaces import (
     scale_surface,
 )
 
+from pygame_engine.graphics.text_utils import (
+    truncate,
+    wrap_and_truncate,
+    wrap_text,
+)
+
 __all__ = [
-    # text_utils
-    "truncate",
-    "wrap_text",
-    "wrap_and_truncate",
     # draw_utils
     "draw_surface_style",
     "draw_rect_bordered",
@@ -68,4 +63,8 @@ __all__ = [
     # sprite_renderer
     "draw_sprite",
     "draw_animation_frame",
+    # text_utils
+    "truncate",
+    "wrap_text",
+    "wrap_and_truncate",
 ]

@@ -1,6 +1,4 @@
 """
-Grid-based A* pathfinding for pygame_engine.
-
 Finds the shortest walkable path between two tile positions on a grid.
 Supports 4-directional and 8-directional (diagonal) movement.
 Integrates naturally with the Tilemap system.
@@ -81,10 +79,12 @@ class ObstacleGrid:
 
     @property
     def cols(self) -> int:
+        """Return the number of columns in the obstacle grid."""
         return self._cols
 
     @property
     def rows(self) -> int:
+        """Return the number of rows in the obstacle grid."""
         return self._rows
 
     def is_blocked(self, col: int, row: int) -> bool:
@@ -190,10 +190,12 @@ class Pathfinder:
 
     @property
     def diagonal(self) -> bool:
+        """Return True if diagonal movement is enabled."""
         return self._diagonal
 
     @diagonal.setter
     def diagonal(self, value: bool) -> None:
+        """Return True if diagonal movement is enabled."""
         self._diagonal = value
 
     # ── Internal ──────────────────────────────────────────────────────────────

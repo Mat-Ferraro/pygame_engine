@@ -1,12 +1,4 @@
 """
-persistence/migrations.py
-
-Save version migration infrastructure for pygame_engine.
-
-The engine defines the migration pipeline structure. The game project
-registers version-specific handlers that transform old save data into
-the current schema.
-
 How it works
 ------------
 1. A save is loaded with a ``save_version`` field in its envelope.
@@ -93,13 +85,14 @@ class MigrationRunner:
                 data["save_version"] = 2
                 return data
         """
-        def decorator(fn: MigrationFn) -> MigrationFn:
+        def decorator(migration_fn: MigrationFn) -> MigrationFn:
+            """Return a decorator that registers a function as a migration handler."""
             if from_version in self._handlers:
                 raise ValueError(
                     f"Migration handler for version {from_version} already registered."
                 )
-            self._handlers[from_version] = fn
-            return fn
+            self._handlers[from_version] = migration_fn
+            return migration_fn
         return decorator
 
     def register_fn(self, from_version: int, fn: MigrationFn) -> None:

@@ -1,6 +1,4 @@
 """
-2D lighting system for pygame_engine.
-
 Simulates 2D lighting by rendering a dark overlay with alpha cutouts for
 light sources. Not physically accurate — a visually convincing technique
 used by countless indie games.
@@ -92,10 +90,12 @@ class Light:
 
     @property
     def effective_intensity(self) -> float:
+        """Return the current effective intensity after flicker is applied."""
         return clamp(self.intensity + self._flicker_offset, 0.0, 1.0)
 
     @property
     def effective_radius(self) -> float:
+        """Return the current effective radius after flicker is applied."""
         return max(1.0, self.radius * (1.0 + self._flicker_offset * 0.15))
 
 
@@ -143,14 +143,17 @@ class LightingSystem:
 
     @property
     def lights(self) -> list[Light]:
+        """Return the list of active lights in the system."""
         return list(self._lights)
 
     @property
     def darkness(self) -> float:
+        """Return the current darkness level in the range 0.0–1.0."""
         return self._darkness
 
     @darkness.setter
     def darkness(self, value: float) -> None:
+        """Return the current darkness level in the range 0.0–1.0."""
         self._darkness = clamp(value, 0.0, 1.0)
 
     # ── Update ────────────────────────────────────────────────────────────────

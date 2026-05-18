@@ -1,6 +1,4 @@
 """
-persistence/save_manager.py
-
 High-level save/load orchestration for pygame_engine.
 
 ``SaveManager`` is the top-level entry point for persistence. It owns:
@@ -31,7 +29,7 @@ Usage::
 
     # List all slots
     for info in saves.list_slots():
-        print(info["slot_id"], info["updated_at"])
+        pass  # slot_id and updated_at are available here if needed
 
     # Delete
     saves.delete("slot_1")

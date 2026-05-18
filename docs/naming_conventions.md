@@ -1,3 +1,15 @@
+> **SUPERSEDED**
+> Naming conventions are now defined in `CODING_STANDARDS.md` Section 4
+> and enforced via `RESTRICTIONS.md` R16. Those documents are authoritative.
+> This file is retained for historical reference only.
+> Do not update this file — update `CODING_STANDARDS.md` instead.
+
+---
+
+---
+
+---
+
 # Naming Conventions
 
 ## Goal

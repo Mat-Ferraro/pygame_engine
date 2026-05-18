@@ -1,6 +1,4 @@
 """
-Tileset — slices a spritesheet into individual tile surfaces.
-
 A Tileset is immutable once created. Load it once and share it across
 as many Tilemaps as needed.
 
@@ -115,10 +113,12 @@ class Tileset:
 
     @property
     def tile_w(self) -> int:
+        """Return the width of a single tile in pixels."""
         return self._tile_w
 
     @property
     def tile_h(self) -> int:
+        """Return the height of a single tile in pixels."""
         return self._tile_h
 
     @property

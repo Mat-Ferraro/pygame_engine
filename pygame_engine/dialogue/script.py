@@ -1,6 +1,4 @@
 """
-Dialogue script format for pygame_engine.
-
 A dialogue script is a plain Python dict (JSON-compatible). This module
 provides the data structures and a validator so games can define scripts
 clearly and catch errors early.
@@ -113,6 +111,7 @@ class DialogueScript:
 
     @property
     def start_node(self) -> str:
+        """Return the id of the starting node for this script."""
         return self._start
 
     def get(self, node_id: str) -> DialogueNode:
@@ -127,10 +126,12 @@ class DialogueScript:
         return self._nodes[node_id]
 
     def has(self, node_id: str) -> bool:
+        """Return True if a node with the given id exists in the script."""
         return node_id in self._nodes
 
     @property
     def node_ids(self) -> list[str]:
+        """Return a sorted list of all node ids in the script."""
         return list(self._nodes.keys())
 
     # ── Internal ──────────────────────────────────────────────────────────────

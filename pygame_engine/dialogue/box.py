@@ -1,6 +1,4 @@
 """
-DialogueBox widget for pygame_engine.
-
 Renders the current state of a DialogueRunner: speaker name, body text
 with typewriter effect, and choice buttons when the player must choose.
 
@@ -88,6 +86,7 @@ class DialogueBox(Widget):
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt: float) -> None:
+        """Advance typewriter reveal and handle auto-advance timing."""
         node = self._runner.current_node
         if node is None:
             return
@@ -174,6 +173,7 @@ class DialogueBox(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the dialogue box, speaker name, and choice buttons onto surface."""
         if not self.visible:
             return
         node = self._runner.current_node

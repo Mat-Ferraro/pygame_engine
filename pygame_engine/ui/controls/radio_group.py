@@ -1,6 +1,4 @@
 """
-RadioGroup widget for pygame_engine.
-
 A group of mutually exclusive options. Selecting one deselects all others.
 Reads visual style from the active theme.
 
@@ -66,16 +64,19 @@ class RadioGroup(Widget):
 
     @property
     def selected_index(self) -> int:
+        """Return the index of the currently selected option."""
         return self._selected
 
     @property
     def selected_value(self) -> str | None:
+        """Return the label of the currently selected option."""
         if self._selected < 0:
             return None
         return self._options[self._selected]
 
     @property
     def options(self) -> list[str]:
+        """Return a copy of the option labels list."""
         return list(self._options)
 
     def select(self, index: int) -> None:
@@ -119,6 +120,7 @@ class RadioGroup(Widget):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the radio group onto surface."""
         if not self.visible:
             return
 

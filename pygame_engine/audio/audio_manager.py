@@ -1,6 +1,4 @@
 """
-audio/audio_manager.py
-
 Runtime audio management for pygame_engine.
 
 ``AudioManager`` handles all playback policy: volume, muting, music
@@ -173,6 +171,7 @@ class AudioManager:
 
     @master_volume.setter
     def master_volume(self, value: float) -> None:
+        """Return the current master volume in the range 0.0–1.0."""
         self._master_volume = max(0.0, min(1.0, value))
         self._apply_music_volume()
 
@@ -183,6 +182,7 @@ class AudioManager:
 
     @music_volume.setter
     def music_volume(self, value: float) -> None:
+        """Return the current music volume in the range 0.0–1.0."""
         self._music_volume = max(0.0, min(1.0, value))
         self._apply_music_volume()
 
@@ -193,6 +193,7 @@ class AudioManager:
 
     @sfx_volume.setter
     def sfx_volume(self, value: float) -> None:
+        """Return the current SFX volume in the range 0.0–1.0."""
         self._sfx_volume = max(0.0, min(1.0, value))
 
     # ── Mute ──────────────────────────────────────────────────────────────────
@@ -204,6 +205,7 @@ class AudioManager:
 
     @muted.setter
     def muted(self, value: bool) -> None:
+        """Return True if the audio manager is currently muted."""
         self._muted = value
         self._apply_music_volume()
 

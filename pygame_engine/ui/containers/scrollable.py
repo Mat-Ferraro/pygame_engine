@@ -1,6 +1,4 @@
 """
-ui/containers/scrollable.py
-
 Scrollable container widget for pygame_engine.
 
 Clips a child widget to a visible viewport and allows vertical scrolling
@@ -97,10 +95,12 @@ class Scrollable(Widget):
 
     @property
     def child(self) -> Widget | None:
+        """Return the current child widget, or None if unset."""
         return self._child
 
     @child.setter
     def child(self, widget: Widget | None) -> None:
+        """Return the current child widget, or None if unset."""
         self._child = widget
         self._scroll_y = 0.0
         self._sync_content_surface()
@@ -148,10 +148,12 @@ class Scrollable(Widget):
         return False
 
     def update(self, dt: float) -> None:
+        """Update child state and handle scroll input."""
         if self._child is not None and self._child.visible:
             self._child.update(dt)
 
     def render(self, surface: pygame.Surface) -> None:
+        """Draw the scrollable container and its child onto surface."""
         if not self.visible:
             return
 

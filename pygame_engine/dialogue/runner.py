@@ -1,6 +1,4 @@
 """
-DialogueRunner — executes a DialogueScript.
-
 The runner is a pure state machine with no rendering. It tracks the current
 node, manages choices, and fires callbacks on actions and completion.
 Games drive it by calling ``advance()`` or ``select_choice()``.
@@ -14,13 +12,13 @@ Usage::
         "end":   {"text": ""},
     })
     runner = DialogueRunner(script)
-    runner.on_action  = lambda tag, node: print(f"action: {tag}")
-    runner.on_complete = lambda: print("dialogue done")
+    runner.on_action  = lambda tag, node: pass  # replace with your action handler
+    runner.on_complete = lambda: pass  # replace with your completion handler
 
     runner.start()
-    print(runner.current_node.text)   # "Hello!"
+    assert runner.current_node.text) == "Hello!"  # example assertion
     runner.advance()                  # moves to "end"
-    print(runner.is_complete)         # True
+    assert runner.is_complete) is True  # example assertion
 """
 
 from __future__ import annotations

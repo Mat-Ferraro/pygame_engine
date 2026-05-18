@@ -1,6 +1,4 @@
 """
-animation/easing.py
-
 Easing functions for pygame_engine.
 
 Every function takes a normalised time value ``t`` in [0.0, 1.0] and
@@ -54,12 +52,15 @@ def linear(t: float) -> float:
 # ── Quadratic ─────────────────────────────────────────────────────────────────
 
 def ease_in_quad(t: float) -> float:
+    """Accelerate from zero — quadratic."""
     return t * t
 
 def ease_out_quad(t: float) -> float:
+    """Decelerate to zero — quadratic."""
     return 1.0 - (1.0 - t) * (1.0 - t)
 
 def ease_in_out_quad(t: float) -> float:
+    """Accelerate then decelerate — quadratic."""
     if t < 0.5:
         return 2.0 * t * t
     return 1.0 - (-2.0 * t + 2.0) ** 2 / 2.0
@@ -68,12 +69,15 @@ def ease_in_out_quad(t: float) -> float:
 # ── Cubic ─────────────────────────────────────────────────────────────────────
 
 def ease_in_cubic(t: float) -> float:
+    """Accelerate from zero — cubic."""
     return t * t * t
 
 def ease_out_cubic(t: float) -> float:
+    """Decelerate to zero — cubic."""
     return 1.0 - (1.0 - t) ** 3
 
 def ease_in_out_cubic(t: float) -> float:
+    """Accelerate then decelerate — cubic."""
     if t < 0.5:
         return 4.0 * t * t * t
     return 1.0 - (-2.0 * t + 2.0) ** 3 / 2.0
@@ -82,12 +86,15 @@ def ease_in_out_cubic(t: float) -> float:
 # ── Quartic ───────────────────────────────────────────────────────────────────
 
 def ease_in_quart(t: float) -> float:
+    """Accelerate from zero — quartic."""
     return t * t * t * t
 
 def ease_out_quart(t: float) -> float:
+    """Decelerate to zero — quartic."""
     return 1.0 - (1.0 - t) ** 4
 
 def ease_in_out_quart(t: float) -> float:
+    """Accelerate then decelerate — quartic."""
     if t < 0.5:
         return 8.0 * t * t * t * t
     return 1.0 - (-2.0 * t + 2.0) ** 4 / 2.0
@@ -96,24 +103,30 @@ def ease_in_out_quart(t: float) -> float:
 # ── Sine ──────────────────────────────────────────────────────────────────────
 
 def ease_in_sine(t: float) -> float:
+    """Accelerate from zero — sinusoidal."""
     return 1.0 - math.cos(t * math.pi / 2.0)
 
 def ease_out_sine(t: float) -> float:
+    """Decelerate to zero — sinusoidal."""
     return math.sin(t * math.pi / 2.0)
 
 def ease_in_out_sine(t: float) -> float:
+    """Accelerate then decelerate — sinusoidal."""
     return -(math.cos(math.pi * t) - 1.0) / 2.0
 
 
 # ── Exponential ───────────────────────────────────────────────────────────────
 
 def ease_in_expo(t: float) -> float:
+    """Accelerate from zero — exponential."""
     return 0.0 if t == 0.0 else 2.0 ** (10.0 * t - 10.0)
 
 def ease_out_expo(t: float) -> float:
+    """Decelerate to zero — exponential."""
     return 1.0 if t == 1.0 else 1.0 - 2.0 ** (-10.0 * t)
 
 def ease_in_out_expo(t: float) -> float:
+    """Accelerate then decelerate — exponential."""
     if t == 0.0: return 0.0
     if t == 1.0: return 1.0
     if t < 0.5:
@@ -124,12 +137,15 @@ def ease_in_out_expo(t: float) -> float:
 # ── Circular ──────────────────────────────────────────────────────────────────
 
 def ease_in_circ(t: float) -> float:
+    """Accelerate from zero — circular."""
     return 1.0 - math.sqrt(max(0.0, 1.0 - t * t))
 
 def ease_out_circ(t: float) -> float:
+    """Decelerate to zero — circular."""
     return math.sqrt(max(0.0, 1.0 - (t - 1.0) ** 2))
 
 def ease_in_out_circ(t: float) -> float:
+    """Accelerate then decelerate — circular."""
     if t < 0.5:
         return (1.0 - math.sqrt(max(0.0, 1.0 - (2.0 * t) ** 2))) / 2.0
     return (math.sqrt(max(0.0, 1.0 - (-2.0 * t + 2.0) ** 2)) + 1.0) / 2.0
@@ -142,12 +158,15 @@ _BACK_C2 = _BACK_C1 * 1.525
 _BACK_C3 = _BACK_C1 + 1.0
 
 def ease_in_back(t: float) -> float:
+    """Overshoot backward then accelerate forward."""
     return _BACK_C3 * t * t * t - _BACK_C1 * t * t
 
 def ease_out_back(t: float) -> float:
+    """Overshoot forward then settle."""
     return 1.0 + _BACK_C3 * (t - 1.0) ** 3 + _BACK_C1 * (t - 1.0) ** 2
 
 def ease_in_out_back(t: float) -> float:
+    """Overshoot backward then forward then settle."""
     if t < 0.5:
         return ((2.0 * t) ** 2 * ((_BACK_C2 + 1.0) * 2.0 * t - _BACK_C2)) / 2.0
     return ((2.0 * t - 2.0) ** 2 * ((_BACK_C2 + 1.0) * (2.0 * t - 2.0) + _BACK_C2) + 2.0) / 2.0
@@ -159,16 +178,19 @@ _ELASTIC_C4 = (2.0 * math.pi) / 3.0
 _ELASTIC_C5 = (2.0 * math.pi) / 4.5
 
 def ease_in_elastic(t: float) -> float:
+    """Elastic snap from zero."""
     if t == 0.0: return 0.0
     if t == 1.0: return 1.0
     return -(2.0 ** (10.0 * t - 10.0)) * math.sin((t * 10.0 - 10.75) * _ELASTIC_C4)
 
 def ease_out_elastic(t: float) -> float:
+    """Elastic snap to zero."""
     if t == 0.0: return 0.0
     if t == 1.0: return 1.0
     return 2.0 ** (-10.0 * t) * math.sin((t * 10.0 - 0.75) * _ELASTIC_C4) + 1.0
 
 def ease_in_out_elastic(t: float) -> float:
+    """Elastic snap in and out."""
     if t == 0.0: return 0.0
     if t == 1.0: return 1.0
     if t < 0.5:
@@ -179,6 +201,7 @@ def ease_in_out_elastic(t: float) -> float:
 # ── Bounce ────────────────────────────────────────────────────────────────────
 
 def ease_out_bounce(t: float) -> float:
+    """Bounce to zero."""
     n1, d1 = 7.5625, 2.75
     if t < 1.0 / d1:
         return n1 * t * t
@@ -193,9 +216,11 @@ def ease_out_bounce(t: float) -> float:
         return n1 * t * t + 0.984375
 
 def ease_in_bounce(t: float) -> float:
+    """Bounce from zero."""
     return 1.0 - ease_out_bounce(1.0 - t)
 
 def ease_in_out_bounce(t: float) -> float:
+    """Bounce in and out."""
     if t < 0.5:
         return (1.0 - ease_out_bounce(1.0 - 2.0 * t)) / 2.0
     return (1.0 + ease_out_bounce(2.0 * t - 1.0)) / 2.0

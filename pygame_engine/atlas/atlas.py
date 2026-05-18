@@ -1,6 +1,4 @@
 """
-SpriteAtlas — pack multiple surfaces into one for efficient blitting.
-
 A SpriteAtlas packs many small named surfaces into a single large surface.
 Blitting from one large surface is faster than blitting from many small
 ones because it avoids repeated texture state changes.
@@ -343,7 +341,9 @@ class AtlasPacker:
 
     @property
     def count(self) -> int:
+        """Return the number of sprites packed into this atlas."""
         return len(self._items)
 
     def clear(self) -> None:
+        """Remove all sprites from the packer and reset state."""
         self._items.clear()
