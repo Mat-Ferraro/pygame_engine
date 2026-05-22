@@ -1,6 +1,4 @@
 """
-Scrollable container widget for pygame_engine.
-
 Clips a child widget to a visible viewport and allows vertical scrolling
 via the mouse wheel. A simple non-interactive scrollbar is drawn on the
 right edge when the content overflows.
@@ -33,9 +31,14 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import pygame
 
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -152,7 +155,7 @@ class Scrollable(Widget):
         if self._child is not None and self._child.visible:
             self._child.update(dt)
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the scrollable container and its child onto surface."""
         if not self.visible:
             return
@@ -165,7 +168,7 @@ class Scrollable(Widget):
         # Draw child onto content surface
         if self._content_surf is not None and self._child is not None:
             self._content_surf.fill((0, 0, 0, 0))
-            self._child.render(self._content_surf)
+            self._child.render(self._content_surf, ctx)
 
             # Blit the visible slice onto the screen
             src_rect = pygame.Rect(0, int(self._scroll_y),
@@ -173,7 +176,7 @@ class Scrollable(Widget):
             surface.blit(self._content_surf, self.rect.topleft, src_rect)
 
         # Clip border
-        theme = get_theme()
+        theme = ctx.theme
         bw    = theme.panel.surface.border_width
         if bw > 0:
             pygame.draw.rect(surface, theme.panel.surface.border,

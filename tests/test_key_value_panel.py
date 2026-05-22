@@ -1,10 +1,14 @@
-"""Tests for KeyValuePanel widget."""
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-os.environ["SDL_AUDIODRIVER"] = "dummy"
-
 import pygame
 import pytest
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 pygame.init()
 pygame.display.set_mode((800, 600))
@@ -80,7 +84,7 @@ def test_clear():
 def test_render_empty_does_not_raise():
     surf = pygame.Surface((500, 400))
     kv = make_kvp()
-    kv.render(surf)
+    kv.render(surf, _ctx())
 
 
 def test_render_with_rows_does_not_raise():
@@ -92,13 +96,13 @@ def test_render_with_rows_does_not_raise():
         ("Power",   87),
         ("Age",     34),
     ])
-    kv.render(surf)
+    kv.render(surf, _ctx())
 
 
 def test_render_with_title_does_not_raise():
     surf = pygame.Surface((500, 400))
     kv = make_kvp(title="Stats", rows=[("HP", 100)])
-    kv.render(surf)
+    kv.render(surf, _ctx())
 
 
 def test_render_invisible_skips():
@@ -106,7 +110,7 @@ def test_render_invisible_skips():
     surf.fill((3, 3, 3))
     kv = make_kvp(rows=[("x", 1)])
     kv.visible = False
-    kv.render(surf)
+    kv.render(surf, _ctx())
     assert surf.get_at((0, 0)) == (3, 3, 3, 255)
 
 
@@ -114,13 +118,13 @@ def test_render_many_rows_does_not_raise():
     surf = pygame.Surface((500, 400))
     rows = [(f"key_{i}", i) for i in range(50)]
     kv = make_kvp(rows=rows)
-    kv.render(surf)
+    kv.render(surf, _ctx())
 
 
 def test_render_with_explicit_split():
     surf = pygame.Surface((500, 400))
     kv = make_kvp(rows=[("Name", "Hero")], split=200)
-    kv.render(surf)
+    kv.render(surf, _ctx())
 
 
 def test_render_custom_colours():
@@ -130,7 +134,7 @@ def test_render_custom_colours():
         label_colour=(100, 100, 100),
         value_colour=(200, 200, 255),
     )
-    kv.render(surf)
+    kv.render(surf, _ctx())
 
 
 def test_set_rect():

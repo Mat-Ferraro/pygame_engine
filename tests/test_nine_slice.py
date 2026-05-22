@@ -1,6 +1,4 @@
 """
-tests/test_nine_slice.py
-
 Tests for pygame_engine.graphics.nine_slice.
 
 Covers: border normalisation, draw_nine_slice geometry, error cases,
@@ -17,6 +15,15 @@ from pygame_engine.graphics.nine_slice import (
     make_nine_slice_surface,
 )
 
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 def make_source(w: int = 32, h: int = 32) -> pygame.Surface:
     """Create a solid-colour source surface for testing."""
@@ -105,14 +112,14 @@ def test_output_preserves_srcalpha_flag() -> None:
 def test_panel_renders_without_raising(display_surface) -> None:
     source = make_source(32, 32)
     panel  = NineSlicePanel(pygame.Rect(0, 0, 200, 120), source, border=8)
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
 
 
 def test_panel_invisible_skips_render(display_surface) -> None:
     source = make_source(32, 32)
     panel  = NineSlicePanel(pygame.Rect(0, 0, 200, 120), source, border=8)
     panel.visible = False
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
     assert panel._cached is None   # never built
 
 
@@ -120,26 +127,26 @@ def test_panel_builds_cache_on_first_render(display_surface) -> None:
     source = make_source(32, 32)
     panel  = NineSlicePanel(pygame.Rect(0, 0, 200, 120), source, border=8)
     assert panel._cached is None
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
     assert panel._cached is not None
 
 
 def test_panel_reuses_cache_on_second_render(display_surface) -> None:
     source = make_source(32, 32)
     panel  = NineSlicePanel(pygame.Rect(0, 0, 200, 120), source, border=8)
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
     first_cache = panel._cached
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
     assert panel._cached is first_cache
 
 
 def test_panel_rebuilds_cache_on_resize(display_surface) -> None:
     source = make_source(32, 32)
     panel  = NineSlicePanel(pygame.Rect(0, 0, 200, 120), source, border=8)
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
     first_cache = panel._cached
     panel.set_rect(pygame.Rect(0, 0, 300, 200))
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
     assert panel._cached is not first_cache
 
 
@@ -147,6 +154,6 @@ def test_panel_cached_surface_matches_rect_size(display_surface) -> None:
     source = make_source(32, 32)
     rect   = pygame.Rect(0, 0, 256, 128)
     panel  = NineSlicePanel(rect, source, border=8)
-    panel.render(display_surface)
+    panel.render(display_surface, _ctx())
     assert panel._cached is not None
     assert panel._cached.get_size() == (256, 128)

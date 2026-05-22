@@ -1,7 +1,4 @@
 """
-Renders the current state of a DialogueRunner: speaker name, body text
-with typewriter effect, and choice buttons when the player must choose.
-
 The box does not drive the runner — it only reads from it and fires
 callbacks on player input. Connect it to a runner and call update/render
 each frame.
@@ -26,12 +23,17 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 from typing import Callable
 
 import pygame
 
 from pygame_engine.dialogue.runner import DialogueRunner
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.utils.mathx import clamp
 
@@ -172,7 +174,7 @@ class DialogueBox(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the dialogue box, speaker name, and choice buttons onto surface."""
         if not self.visible:
             return
@@ -180,7 +182,7 @@ class DialogueBox(Widget):
         if node is None:
             return
 
-        theme   = get_theme()
+        theme = ctx.theme
         colours = theme.colours
         pad     = self.PADDING
 

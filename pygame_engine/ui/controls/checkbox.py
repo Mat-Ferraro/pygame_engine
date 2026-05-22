@@ -1,6 +1,4 @@
 """
-A labelled boolean toggle. Reads visual style from the active theme.
-
 Usage::
 
     from pygame_engine.ui.controls.checkbox import Checkbox
@@ -15,11 +13,16 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 from typing import Callable
 
 import pygame
 
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -90,12 +93,12 @@ class Checkbox(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the checkbox onto surface."""
         if not self.visible:
             return
 
-        theme   = get_theme()
+        theme = ctx.theme
         colours = theme.colours
 
         # Box rect (left-aligned, vertically centred)

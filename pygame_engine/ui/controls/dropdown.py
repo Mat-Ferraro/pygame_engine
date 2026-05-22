@@ -1,6 +1,4 @@
 """
-Dropdown widget for pygame_engine.
-
 A button that opens a floating list of selectable options. The list
 renders above all other widgets via an ``overlay_render()`` call that
 the owning scene or container makes last in its render pass.
@@ -38,11 +36,16 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 from typing import Any, Callable
 
 import pygame
 
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -218,12 +221,12 @@ class Dropdown(Widget):
 
     # ── Normal render — closed button face ───────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the closed button face. Always called in normal render order."""
         if not self.visible:
             return
 
-        theme  = get_theme()
+        theme = ctx.theme
         font   = self._get_font(theme)
         style  = (theme.button.disabled if not self.enabled
                   else theme.button.hovered if self.hovered or self._open
@@ -255,7 +258,7 @@ class Dropdown(Widget):
 
     # ── Overlay render — open list ────────────────────────────────────────────
 
-    def overlay_render(self, surface: pygame.Surface) -> None:
+    def overlay_render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Draw the open option list.
 
@@ -267,7 +270,7 @@ class Dropdown(Widget):
         if not self._open or not self.visible:
             return
 
-        theme  = get_theme()
+        theme = ctx.theme
         font   = self._get_font(theme)
         r      = self._list_rect
         radius = theme.panel.surface.radius

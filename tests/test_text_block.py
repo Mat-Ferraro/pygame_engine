@@ -1,6 +1,4 @@
 """
-tests/test_text_block.py
-
 Tests for pygame_engine.ui.text.TextBlock.
 
 Covers: text wrapping logic, dirty flag invalidation, property setters,
@@ -14,6 +12,15 @@ import pytest
 from pygame_engine.graphics.text_utils import wrap_text
 from pygame_engine.ui.text.text_block import TextBlock
 
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 RECT = pygame.Rect(0, 0, 300, 200)
 
@@ -138,42 +145,42 @@ def test_wrap_empty_paragraph_adds_empty_string() -> None:
 
 def test_render_does_not_raise(display_surface) -> None:
     tb = TextBlock(RECT, "Hello, world!")
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
 
 
 def test_render_clears_dirty_flag(display_surface) -> None:
     tb = TextBlock(RECT, "hello")
     assert tb._dirty is True
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
     assert tb._dirty is False
 
 
 def test_render_creates_cache_surface(display_surface) -> None:
     tb = TextBlock(RECT, "hello")
     assert tb._cache_surface is None
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
     assert tb._cache_surface is not None
 
 
 def test_render_skips_when_invisible(display_surface) -> None:
     tb = TextBlock(RECT, "hello")
     tb.visible = False
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
     assert tb._cache_surface is None   # never built
 
 
 def test_second_render_reuses_cache(display_surface) -> None:
     tb = TextBlock(RECT, "hello")
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
     first_surf = tb._cache_surface
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
     assert tb._cache_surface is first_surf   # same object
 
 
 def test_text_change_forces_cache_rebuild(display_surface) -> None:
     tb = TextBlock(RECT, "hello")
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
     first_surf = tb._cache_surface
     tb.text = "world"
-    tb.render(display_surface)
+    tb.render(display_surface, _ctx())
     assert tb._cache_surface is not first_surf

@@ -1,8 +1,15 @@
-"""tests/test_checkbox.py — Checkbox widget tests."""
-
 import pygame
 
 from pygame_engine.ui.controls.checkbox import Checkbox
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 RECT = pygame.Rect(100, 100, 200, 32)
 
@@ -83,14 +90,14 @@ def test_focusable_by_default() -> None:
 
 
 def test_render_does_not_raise(display_surface) -> None:
-    Checkbox(RECT, label="Enable VSync", checked=True).render(display_surface)
+    Checkbox(RECT, label="Enable VSync", checked=True).render(display_surface, _ctx())
 
 
 def test_render_unchecked_does_not_raise(display_surface) -> None:
-    Checkbox(RECT, label="Fullscreen", checked=False).render(display_surface)
+    Checkbox(RECT, label="Fullscreen", checked=False).render(display_surface, _ctx())
 
 
 def test_invisible_skips_render(display_surface) -> None:
     c = Checkbox(RECT)
     c.visible = False
-    c.render(display_surface)
+    c.render(display_surface, _ctx())

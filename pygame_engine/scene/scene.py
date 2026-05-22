@@ -1,7 +1,4 @@
 """
-Scenes represent high-level application states: menus, gameplay screens,
-settings dialogs, pause overlays, loading screens, etc.
-
 Every scene in a project built on pygame_engine should subclass Scene and
 override the lifecycle hooks and frame methods it needs. All hooks have safe
 no-op defaults so subclasses only write what they actually use.
@@ -17,13 +14,19 @@ Typical usage::
             if self.root_widget:
                 self.root_widget.update(dt)
 
-        def render(self, surface: pygame.Surface) -> None:
+        def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
             surface.fill((20, 20, 30))
             if self.root_widget:
-                self.root_widget.render(surface)
+                self.root_widget.render(surface, ctx)
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -215,7 +218,7 @@ class Scene:
         if self.root_widget is not None:
             self.root_widget.update(dt)
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Draw this scene onto the provided surface.
 
@@ -231,10 +234,10 @@ class Scene:
             surface: The surface to draw onto (usually the display surface).
         """
         if self.root_widget is not None:
-            self.root_widget.render(surface)
-        self.overlay_render(surface)
+            self.root_widget.render(surface, ctx)
+        self.overlay_render(surface, ctx)
 
-    def overlay_render(self, surface: pygame.Surface) -> None:
+    def overlay_render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Second render pass for floating UI elements.
 

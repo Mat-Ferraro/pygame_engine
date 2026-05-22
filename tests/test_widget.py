@@ -1,6 +1,4 @@
 """
-tests/test_widget.py
-
 Tests for pygame_engine.ui.base.Widget.
 
 Covers: visibility/enabled guards, hovered updates, contains_point,

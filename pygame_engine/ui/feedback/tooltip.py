@@ -1,6 +1,4 @@
 """
-Tooltip widget for pygame_engine.
-
 A small floating label that appears near the mouse cursor to provide
 context for a hovered widget. The tooltip is shown and hidden externally
 — the owning scene or widget calls show()/hide() based on hover state.
@@ -30,10 +28,15 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import pygame
 
 from pygame_engine.graphics.surfaces import blit_alpha_surface, make_alpha_surface
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -140,7 +143,7 @@ class Tooltip(Widget):
         else:
             self._alpha = 1.0
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the tooltip onto surface if visible."""
         if not self.visible or self._alpha <= 0:
             return
@@ -158,7 +161,7 @@ class Tooltip(Widget):
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _build_font(self) -> None:
-        theme = get_theme()
+        theme = ctx.theme
         self._font = pygame.font.SysFont(
             theme.typography.family,
             theme.typography.xs,
@@ -170,7 +173,7 @@ class Tooltip(Widget):
         if self._font is None:
             return
 
-        theme = get_theme()
+        theme = ctx.theme
         self._text_surf = self._font.render(
             self._text, True, theme.colours.text
         )

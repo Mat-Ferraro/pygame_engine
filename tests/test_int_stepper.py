@@ -1,10 +1,14 @@
-"""Tests for IntStepper widget."""
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-os.environ["SDL_AUDIODRIVER"] = "dummy"
-
 import pygame
 import pytest
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 pygame.init()
 pygame.display.set_mode((800, 600))
@@ -168,7 +172,7 @@ def test_keyboard_ignored_when_not_focused():
 def test_render_does_not_raise():
     surf = pygame.Surface((400, 200))
     s = make_stepper(label="Test Label", fmt="{v}c")
-    s.render(surf)
+    s.render(surf, _ctx())
 
 
 def test_render_invisible_skips():
@@ -176,14 +180,14 @@ def test_render_invisible_skips():
     surf.fill((5, 5, 5))
     s = make_stepper()
     s.visible = False
-    s.render(surf)
+    s.render(surf, _ctx())
     assert surf.get_at((0, 0)) == (5, 5, 5, 255)
 
 
 def test_render_no_label_does_not_raise():
     surf = pygame.Surface((400, 200))
     s = make_stepper(label="")
-    s.render(surf)
+    s.render(surf, _ctx())
 
 
 def test_btn_rects_are_inside_widget():

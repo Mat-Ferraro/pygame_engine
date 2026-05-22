@@ -1,10 +1,5 @@
 """
-Used anywhere a bounded integer needs to be adjusted by hand: contract
-campaign count, team size, difficulty, volume level, etc.
-
-Usage::
-
-    from pygame_engine.ui.controls.int_stepper import IntStepper
+from pygame_engine.ui.controls.int_stepper import IntStepper
 
     stepper = IntStepper(
         rect=pygame.Rect(300, 400, 200, 48),
@@ -18,12 +13,17 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 from typing import Callable
 
 import pygame
 
 from pygame_engine.graphics.draw_utils import draw_rect_bordered, draw_chevron
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -135,13 +135,13 @@ class IntStepper(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the stepper onto surface."""
         if not self.visible:
             return
 
-        theme     = get_theme()
-        dec_r, inc_r = self._btn_rects()
+        theme = ctx.theme
+        dec_r, inc_r = self._btn_rects(ctx)
         val_r        = self._value_rect()
 
         # Optional title
@@ -189,10 +189,14 @@ class IntStepper(Widget):
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-    def _control_rect(self) -> pygame.Rect:
+    def _control_rect(self, ctx: "RenderContext" = None) -> pygame.Rect:
         """Bottom portion of rect used for the actual stepper control."""
         if self.label:
-            theme    = get_theme()
+            if ctx is not None:
+                theme = ctx.theme
+            else:
+                from pygame_engine.theme.runtime import get_theme
+                theme = get_theme()
             title_h  = theme.typography.sm + 4
             return pygame.Rect(
                 self.rect.x,
@@ -202,14 +206,14 @@ class IntStepper(Widget):
             )
         return pygame.Rect(self.rect)
 
-    def _btn_rects(self) -> tuple[pygame.Rect, pygame.Rect]:
-        cr = self._control_rect()
+    def _btn_rects(self, ctx: "RenderContext" = None) -> tuple[pygame.Rect, pygame.Rect]:
+        cr = self._control_rect(ctx)
         dec = pygame.Rect(cr.x,              cr.y, self.BTN_W, cr.height)
         inc = pygame.Rect(cr.right - self.BTN_W, cr.y, self.BTN_W, cr.height)
         return dec, inc
 
     def _value_rect(self) -> pygame.Rect:
-        cr  = self._control_rect()
+        cr  = self._control_rect(None)
         return pygame.Rect(
             cr.x + self.BTN_W,
             cr.y,

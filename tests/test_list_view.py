@@ -1,10 +1,14 @@
-"""Tests for ListView widget."""
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-os.environ["SDL_AUDIODRIVER"] = "dummy"
-
 import pygame
 import pytest
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 pygame.init()
 pygame.display.set_mode((800, 600))
@@ -260,14 +264,14 @@ def test_disabled_lv_does_not_handle_events():
 def test_render_does_not_raise_empty():
     surf = pygame.Surface((400, 500))
     lv = make_lv()
-    lv.render(surf)
+    lv.render(surf, _ctx())
 
 
 def test_render_does_not_raise_with_items():
     surf = pygame.Surface((400, 500))
     lv = make_lv()
     lv.set_items(["item one", "item two", "item three"])
-    lv.render(surf)
+    lv.render(surf, _ctx())
 
 
 def test_render_skips_when_invisible():
@@ -276,7 +280,7 @@ def test_render_skips_when_invisible():
     lv = make_lv()
     lv.set_items(["visible?"])
     lv.visible = False
-    lv.render(surf)
+    lv.render(surf, _ctx())
     # Surface unchanged (still all black) — no assert beyond no crash
 
 
@@ -290,5 +294,5 @@ def test_render_uses_custom_renderer():
     lv   = make_lv()
     lv.row_renderer = custom_renderer
     lv.set_items(["a", "b", "c"])
-    lv.render(surf)
+    lv.render(surf, _ctx())
     assert set(rendered_items) == {"a", "b", "c"}

@@ -1,10 +1,8 @@
-Changes are ordered: highest priority (blocks new features) first.
-
 ---
 
 ## Priority 1 -- Must Change Before New Features
 
-### C1 — Theme Singleton Must Move to Application
+### C1 — Theme Singleton Must Move to Application ✅ RESOLVED (CHANGE-02)
 
 **What:** `get_theme()` returns a module-level singleton shared across
 all `Application` instances in the same process. Two `Application`
@@ -27,6 +25,8 @@ engine untestable in isolation. (Restriction R9)
 4. Module-level `get_theme()` becomes a deprecated wrapper
 
 **Restriction:** R9 (No stateful singletons)
+
+**Resolved:** Option 2 — `RenderContext` dataclass passed to every `render(surface, ctx)` call. `Application._loop()` builds `RenderContext(theme=get_theme())` once per frame. All 42 widget `get_theme()` call sites replaced with `ctx.theme`. Module-level `get_theme()` / `set_theme()` retained for `loader.py` hot-reload only.
 
 ---
 

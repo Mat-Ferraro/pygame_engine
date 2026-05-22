@@ -1,9 +1,4 @@
 """
-ConfirmDialog is intentionally NOT a subclass of Scene — doing so would
-create a circular import (scene → ui.Widget → ui.__init__ → ConfirmDialog
-→ scene). Instead it implements the Scene protocol (handle_event, update,
-render, on_enter) and is wrapped in a lightweight adapter when pushed.
-
 Usage — push from any scene::
 
     from pygame_engine.ui.feedback.confirm_dialog import ConfirmDialog
@@ -21,13 +16,18 @@ The dialog pops itself automatically after the user responds.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 from typing import Callable
 
 import pygame
 
 from pygame_engine.graphics.draw_utils import draw_rect_bordered
 from pygame_engine.graphics.surfaces import make_alpha_surface, blit_alpha_surface
-from pygame_engine.theme.runtime import get_theme
 
 
 class ConfirmDialog:
@@ -122,10 +122,10 @@ class ConfirmDialog:
                 """Update button hover state."""
                 super().update(dt)
 
-            def render(self_, surface):
+            def render(self_, surface, ctx):
                 """Draw the dialog overlay and buttons onto surface."""
-                self_._dlg._render(surface)
-                super().render(surface)
+                self_._dlg._render(surface, ctx)
+                super().render(surface, ctx)
 
         app.scene_manager.push(_Adapter(dialog))
         return dialog
@@ -157,7 +157,7 @@ class ConfirmDialog:
 
         return False
 
-    def _render(self, surface: pygame.Surface) -> None:
+    def _render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         sw, sh = surface.get_size()
 
         # Dim overlay
@@ -170,7 +170,7 @@ class ConfirmDialog:
         blit_alpha_surface(surface, self._overlay_surf, (0, 0), 1.0)
 
         # Dialog panel
-        theme = get_theme()
+        theme = ctx.theme
         dlg_r = self._dialog_rect(sw, sh)
         draw_rect_bordered(
             surface, dlg_r,

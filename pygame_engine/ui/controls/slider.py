@@ -1,7 +1,4 @@
 """
-A horizontal or vertical slider for selecting a value in a continuous range.
-Reads visual style from the active theme.
-
 Usage::
 
     from pygame_engine.ui.controls.slider import Slider
@@ -15,11 +12,16 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 from typing import Callable
 
 import pygame
 
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.utils.mathx import clamp
 
@@ -143,12 +145,12 @@ class Slider(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the slider onto surface."""
         if not self.visible:
             return
 
-        theme  = get_theme()
+        theme = ctx.theme
         colours = theme.colours
 
         # Track

@@ -1,6 +1,4 @@
 """
-Toast notification widget for pygame_engine.
-
 A short-lived message that appears briefly then fades out automatically.
 Useful for non-blocking feedback: "Saved", "Error", "Level complete", etc.
 
@@ -33,10 +31,15 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import pygame
 
 from pygame_engine.graphics.surfaces import blit_alpha_surface, make_alpha_surface
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.utils.timers import Timer
 
@@ -172,7 +175,7 @@ class Toast(Widget):
                 self.visible  = False
                 self._alpha   = 0.0
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the toast onto surface."""
         if not self.visible or self._alpha <= 0:
             return
@@ -198,7 +201,7 @@ class Toast(Widget):
         self._phase_timer = Timer(durations.get(phase, 0.0), auto_start=True)
 
     def _build_font(self) -> None:
-        theme = get_theme()
+        theme = ctx.theme
         self._font = pygame.font.SysFont(
             theme.typography.family,
             theme.typography.sm,
@@ -206,7 +209,7 @@ class Toast(Widget):
         self._dirty = True
 
     def _resolve_bg_colour(self) -> tuple[int, int, int]:
-        theme = get_theme()
+        theme = ctx.theme
         return {
             "success": theme.colours.bg_raised,
             "warning": theme.colours.bg_raised,
@@ -214,7 +217,7 @@ class Toast(Widget):
         }.get(self._kind, theme.colours.bg_raised)
 
     def _resolve_accent_colour(self) -> tuple[int, int, int]:
-        theme = get_theme()
+        theme = ctx.theme
         return {
             "success": (60,  170, 100),
             "warning": (210, 150,  40),
@@ -225,7 +228,7 @@ class Toast(Widget):
         if self._font is None:
             return
 
-        theme = get_theme()
+        theme = ctx.theme
         self._text_surf = self._font.render(
             self._text, True, theme.colours.text
         )

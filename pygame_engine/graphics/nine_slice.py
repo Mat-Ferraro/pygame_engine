@@ -1,6 +1,4 @@
 """
-graphics/nine_slice.py
-
 Nine-slice (9-patch) scaling for pygame_engine.
 
 Nine-slice divides a source surface into a 3×3 grid:
@@ -30,6 +28,12 @@ Usage::
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -182,7 +186,7 @@ class NineSlicePanel:
         self.rect = rect
         self._cached = None
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext" = None) -> None:
         """Draw the nine-slice background."""
         if not self.visible:
             return

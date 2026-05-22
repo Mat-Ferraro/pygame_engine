@@ -1,6 +1,4 @@
 """
-tests/test_dialogue.py
-
 Tests for pygame_engine.dialogue: DialogueScript, DialogueRunner, DialogueBox.
 
 Script and runner tests are fully headless (no pygame rendering needed).
@@ -61,6 +59,15 @@ CHOICE_ACTION_SCRIPT = {
 # ══════════════════════════════════════════════════════════════════════════════
 # DialogueScript
 # ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 def test_script_parses_nodes() -> None:
     s = DialogueScript(LINEAR_SCRIPT)
@@ -376,26 +383,26 @@ def test_box_number_key_selects_choice() -> None:
 def test_box_render_does_not_raise(display_surface) -> None:
     box, _ = make_box()
     box.update(0.016)
-    box.render(display_surface)
+    box.render(display_surface, _ctx())
 
 
 def test_box_render_with_choices(display_surface) -> None:
     box, _ = make_box(BRANCHING_SCRIPT, chars_per_sec=0.0)
     box.update(0.016)
-    box.render(display_surface)
+    box.render(display_surface, _ctx())
 
 
 def test_box_invisible_skips_render(display_surface) -> None:
     box, _ = make_box()
     box.visible = False
-    box.render(display_surface)   # should not raise
+    box.render(display_surface, _ctx())   # should not raise
 
 
 def test_box_render_no_crash_when_runner_not_started(display_surface) -> None:
     script = DialogueScript(LINEAR_SCRIPT)
     runner = DialogueRunner(script)
     box    = DialogueBox(BOX_RECT, runner)
-    box.render(display_surface)   # runner not started — should be no-op
+    box.render(display_surface, _ctx())   # runner not started — should be no-op
 
 
 def test_box_node_change_resets_typewriter() -> None:

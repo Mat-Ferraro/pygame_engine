@@ -1,6 +1,4 @@
 """
-tests/test_progress_bar.py
-
 Tests for pygame_engine.ui.controls.ProgressBar.
 """
 
@@ -9,6 +7,15 @@ import pytest
 
 from pygame_engine.ui.controls.progress_bar import ProgressBar
 
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 RECT = pygame.Rect(0, 0, 200, 20)
 
@@ -90,7 +97,7 @@ def test_invisible_bar_skips_render(display_surface) -> None:
     bar = ProgressBar(RECT, value=0.5)
     bar.visible = False
     # Should not raise
-    bar.render(display_surface)
+    bar.render(display_surface, _ctx())
 
 
 def test_direction_property() -> None:

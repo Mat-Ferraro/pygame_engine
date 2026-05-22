@@ -1,8 +1,4 @@
 """
-The most common pattern in data-driven UIs: a scrollable panel containing
-a list of items where each row can be hovered, selected, and clicked.
-Row appearance is fully customisable via a ``row_renderer`` callable.
-
 Usage::
 
     from pygame_engine.ui.controls.list_view import ListView
@@ -27,12 +23,17 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 from typing import Callable
 
 import pygame
 
 from pygame_engine.graphics.draw_utils import draw_rect_bordered
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -188,12 +189,12 @@ class ListView(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the list view onto surface."""
         if not self.visible:
             return
 
-        theme = get_theme()
+        theme = ctx.theme
 
         draw_rect_bordered(
             surface, self.rect,

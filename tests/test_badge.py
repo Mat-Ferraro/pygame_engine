@@ -1,8 +1,3 @@
-"""Tests for Badge widget."""
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-os.environ["SDL_AUDIODRIVER"] = "dummy"
-
 import pygame
 import pytest
 
@@ -11,6 +6,15 @@ pygame.display.set_mode((800, 600))
 
 from pygame_engine.ui.controls.badge import Badge, _STYLES
 
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 def make_badge(text="Test", style="default", rect=None):
     r = rect or pygame.Rect(0, 0, 90, 26)
@@ -38,7 +42,7 @@ def test_all_styles_defined():
 def test_unknown_style_falls_back_gracefully():
     b = make_badge(style="nonexistent")
     surf = pygame.Surface((200, 60))
-    b.render(surf)   # should not raise
+    b.render(surf, _ctx())   # should not raise
 
 
 # ── Property setters ──────────────────────────────────────────────────────────
@@ -84,7 +88,7 @@ def test_render_does_not_raise():
     surf = pygame.Surface((200, 60))
     for style in _STYLES:
         b = Badge(pygame.Rect(10, 10, 90, 26), style.capitalize(), style)
-        b.render(surf)
+        b.render(surf, _ctx())
 
 
 def test_render_invisible_does_nothing():
@@ -92,7 +96,7 @@ def test_render_invisible_does_nothing():
     surf.fill((12, 34, 56))
     b = make_badge()
     b.visible = False
-    b.render(surf)
+    b.render(surf, _ctx())
     assert surf.get_at((0, 0)) == (12, 34, 56, 255)
 
 
@@ -101,7 +105,7 @@ def test_render_produces_non_transparent_surface():
     surf = pygame.Surface((200, 60), pygame.SRCALPHA)
     surf.fill((0, 0, 0, 0))
     b = Badge(pygame.Rect(10, 10, 90, 26), "Ready", "good")
-    b.render(surf)
+    b.render(surf, _ctx())
     # At least one pixel in the badge area should be non-transparent
     found_opaque = False
     for x in range(10, 100):
@@ -117,17 +121,17 @@ def test_render_produces_non_transparent_surface():
 def test_rebuild_called_once_and_cached():
     b = make_badge()
     surf = pygame.Surface((200, 60))
-    b.render(surf)
+    b.render(surf, _ctx())
     first_surf = b._surf
-    b.render(surf)   # second render — same cached surface
+    b.render(surf, _ctx())   # second render — same cached surface
     assert b._surf is first_surf
 
 
 def test_text_change_triggers_rebuild():
     b = make_badge(text="Before")
     surf = pygame.Surface((200, 60))
-    b.render(surf)
+    b.render(surf, _ctx())
     first = b._surf
     b.text = "After"
-    b.render(surf)
+    b.render(surf, _ctx())
     assert b._surf is not first

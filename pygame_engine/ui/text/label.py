@@ -1,11 +1,5 @@
 """
-Renders a single line of text within its rect. Reads default style
-values from the active theme. Per-instance overrides can be passed at
-construction and take precedence over theme values.
-
-Usage::
-
-    from pygame_engine.ui.text.label import Label
+from pygame_engine.ui.text.label import Label
 
     # Theme-styled (uses theme.label.text defaults)
     label = Label(rect, "Hello")
@@ -15,6 +9,12 @@ Usage::
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -127,7 +127,7 @@ class Label(Widget):
 
     # ── Frame methods ─────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the label onto surface."""
         if not self.visible:
             return

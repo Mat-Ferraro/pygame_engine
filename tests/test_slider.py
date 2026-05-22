@@ -1,9 +1,16 @@
-"""tests/test_slider.py — Slider widget tests."""
-
 import pygame
 import pytest
 
 from pygame_engine.ui.controls.slider import Slider
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 RECT = pygame.Rect(100, 100, 200, 24)
 
@@ -113,13 +120,13 @@ def test_click_sets_value() -> None:
 
 
 def test_render_does_not_raise(display_surface) -> None:
-    Slider(RECT, value=0.5).render(display_surface)
+    Slider(RECT, value=0.5).render(display_surface, _ctx())
 
 
 def test_invisible_slider_skips_render(display_surface) -> None:
     s = Slider(RECT)
     s.visible = False
-    s.render(display_surface)
+    s.render(display_surface, _ctx())
 
 
 def test_custom_range() -> None:

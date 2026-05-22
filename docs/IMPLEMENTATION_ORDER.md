@@ -1,7 +1,3 @@
-**Version:** 1.0  
-**Status:** Active — updated as phases complete  
-**Reference:** DESIGN_SPEC.md Section 9, CODEBASE_CHANGES.md
-
 ---
 
 ## Purpose
@@ -24,8 +20,8 @@ that each phase builds on a stable, tested foundation.
 
 | Phase | Status | Notes |
 |---|---|---|
-| Phase A — Foundation Repairs | 🟡 In progress | CHANGE-01 + CHANGE-07 complete |
-| Phase B — Core Additions | 🔴 Not started | Depends on Phase A |
+| Phase A — Foundation Repairs | ✅ Complete | CHANGE-01, 07, 09, 02 all done |
+| Phase B — Core Additions | 🟡 In progress | Phase A complete |
 | Phase C — Game Codebase Repairs | 🔴 Not started | Depends on Phase A |
 | Phase D — Layout and Editor Foundation | ⬜ Planned | Depends on A + B |
 | Phase E — Debug and Testing Infrastructure | ⬜ Planned | Depends on B |
@@ -50,8 +46,8 @@ they are architectural debt that compounds if ignored.
 | ID | Task | Restriction | Priority |
 |---|---|---|---|
 | CHANGE-01 | Observable[T] upgrade — weak refs, transaction batching, old-value payload | R09 (memory leak) | ✅ Complete |
-| CHANGE-09 | Extend AppConfig: `mode` enum, `reduced_motion: bool` | R09, R18 | Second |
-| CHANGE-02 | Fix theme singleton — decision required first (see CODEBASE_CHANGES.md) | R09 | Third |
+| CHANGE-09 | Extend AppConfig: `mode` enum, `reduced_motion: bool` | R09, R18 | ✅ Complete |
+| CHANGE-02 | Fix theme singleton — RenderContext Option 2 chosen and implemented | R09 | ✅ Complete |
 | CHANGE-07 | SubscriptionGroup class + Scene auto-cleanup on exit | R09 (memory leak) | ✅ Complete |
 
 **Why this order:**

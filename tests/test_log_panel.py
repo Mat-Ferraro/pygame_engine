@@ -1,10 +1,14 @@
-"""Tests for LogPanel widget."""
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-os.environ["SDL_AUDIODRIVER"] = "dummy"
-
 import pygame
 import pytest
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 pygame.init()
 pygame.display.set_mode((800, 600))
@@ -163,14 +167,14 @@ def test_wheel_outside_rect_not_consumed():
 def test_render_empty_does_not_raise():
     surf = pygame.Surface((500, 400))
     log = make_log()
-    log.render(surf)
+    log.render(surf, _ctx())
 
 
 def test_render_with_lines_does_not_raise():
     surf = pygame.Surface((500, 400))
     log = make_log()
     log.append_lines(["line one", "line two", "line three"])
-    log.render(surf)
+    log.render(surf, _ctx())
 
 
 def test_render_invisible_skips():
@@ -179,7 +183,7 @@ def test_render_invisible_skips():
     log = make_log()
     log.append("text")
     log.visible = False
-    log.render(surf)
+    log.render(surf, _ctx())
     assert surf.get_at((0, 0)) == (7, 8, 9, 255)
 
 
@@ -188,4 +192,4 @@ def test_render_with_overflow_does_not_raise():
     log = make_log(rect=pygame.Rect(0, 0, 300, 100))
     for i in range(30):
         log.append(f"line {i}")
-    log.render(surf)
+    log.render(surf, _ctx())

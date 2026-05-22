@@ -1,6 +1,11 @@
-"""
-tests/test_dropdown.py
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
 
+def _ctx():
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
+
+"""
 Tests for pygame_engine.ui.controls.Dropdown.
 
 Covers: construction, selection, on_change callback, keyboard navigation,
@@ -187,16 +192,16 @@ def test_item_at_returns_correct_index() -> None:
 
 def test_render_does_not_raise(display_surface) -> None:
     d = Dropdown(RECT, OPTS)
-    d.render(display_surface)
+    d.render(display_surface, _ctx())
 
 
 def test_overlay_render_noop_when_closed(display_surface) -> None:
     d = Dropdown(RECT, OPTS)
-    d.overlay_render(display_surface)   # should not raise
+    d.overlay_render(display_surface, _ctx())   # should not raise
 
 
 def test_render_invisible_does_not_raise(display_surface) -> None:
     d = Dropdown(RECT, OPTS)
     d.visible = False
-    d.render(display_surface)
-    d.overlay_render(display_surface)
+    d.render(display_surface, _ctx())
+    d.overlay_render(display_surface, _ctx())

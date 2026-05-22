@@ -1,10 +1,4 @@
 """
-Integration tests for pygame_engine.app.Application and AppConfig.
-
-These tests cover the runtime spine without running the full game loop.
-We test construction, configuration, dt computation, resize handling,
-debug flag activation, event routing logic, and service access guards.
-
 We do NOT call app.run() — that starts the main loop. Instead we call
 the individual lifecycle methods directly after mocking the display, or
 we test the parts that are safe to call in isolation.
@@ -23,6 +17,15 @@ from pygame_engine.scene import Scene
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 class MinimalScene(Scene):
     """Bare-minimum scene for startup tests."""
@@ -335,12 +338,12 @@ def test_scene_render_calls_overlay_render() -> None:
     calls: list[str] = []
 
     class TrackingScene(Scene):
-        def overlay_render(self, surface):
+        def overlay_render(self, surface, ctx=None):
             calls.append("overlay")
 
     scene   = TrackingScene()
     surface = pygame.Surface((100, 80))
-    scene.render(surface)
+    scene.render(surface, _ctx())
     assert "overlay" in calls
 
 
@@ -348,7 +351,10 @@ def test_overlay_render_default_is_noop() -> None:
     """Default overlay_render() must not raise."""
     scene   = Scene()
     surface = pygame.Surface((100, 80))
-    scene.overlay_render(surface)   # should not raise
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    ctx = RenderContext(theme=get_theme())
+    scene.overlay_render(surface, ctx)   # should not raise
 
 
 def test_scene_render_calls_overlay_after_widget_tree() -> None:
@@ -358,16 +364,16 @@ def test_scene_render_calls_overlay_after_widget_tree() -> None:
     class OrderWidget:
         rect = pygame.Rect(0, 0, 10, 10)
         visible = True
-        def render(self, surface):
+        def render(self, surface, ctx=None):
             order.append("widget")
 
     class TrackingScene(Scene):
-        def overlay_render(self, surface):
+        def overlay_render(self, surface, ctx=None):
             order.append("overlay")
 
     scene = TrackingScene()
     scene.root_widget = OrderWidget()  # type: ignore
-    scene.render(pygame.Surface((100, 80)))
+    scene.render(pygame.Surface((100, 80)), _ctx())
 
     assert order == ["widget", "overlay"]
 

@@ -1,8 +1,4 @@
 """
-Panel is the standard building block for grouping widgets. It draws a
-styled background and border from the active theme, owns a flat list of
-child widgets, and delegates the three frame methods to them.
-
 Panel does NOT own a layout helper — callers assign child rects
 externally using the layout helpers in ``pygame_engine.layout``. This
 keeps Panel focused on containment and delegation, not positioning.
@@ -24,10 +20,15 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import pygame
 
 from pygame_engine.graphics.draw_utils import draw_surface_style
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.ui.focus import FocusManager
 
@@ -170,7 +171,7 @@ class Panel(Widget, FocusManager):
             if child.visible:
                 child.update(dt)
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Draw the panel background and border, then render all children.
 
@@ -180,24 +181,24 @@ class Panel(Widget, FocusManager):
         if not self.visible:
             return
 
-        self._draw_background(surface)
+        self._draw_background(surface, ctx)
 
         if self.clip:
             old_clip = surface.get_clip()
             surface.set_clip(self.rect)
-            self._render_children(surface)
+            self._render_children(surface, ctx)
             surface.set_clip(old_clip)
         else:
-            self._render_children(surface)
+            self._render_children(surface, ctx)
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-    def _draw_background(self, surface: pygame.Surface) -> None:
+    def _draw_background(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the panel surface (background + border) from theme."""
-        draw_surface_style(surface, self.rect, get_theme().panel.surface)
+        draw_surface_style(surface, self.rect, ctx.theme.panel.surface)
 
-    def _render_children(self, surface: pygame.Surface) -> None:
+    def _render_children(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Render all visible children in add-order (bottom to top)."""
         for child in self._children:
             if child.visible:
-                child.render(surface)
+                child.render(surface, ctx)

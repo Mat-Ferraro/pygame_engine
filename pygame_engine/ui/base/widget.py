@@ -1,6 +1,4 @@
 """
-ui/base/widget.py
-
 Base widget contract for pygame_engine.
 
 Every UI element in the engine subclasses Widget. This base class provides
@@ -27,7 +25,7 @@ Typical subclass pattern::
                     return True
             return False
 
-        def render(self, surface: pygame.Surface) -> None:
+        def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
             if not self.visible:
                 return
             colour = (80, 80, 200) if not self._pressed else (60, 60, 160)
@@ -35,6 +33,12 @@ Typical subclass pattern::
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -193,7 +197,7 @@ class Widget:
             dt: Delta time in seconds since the last frame.
         """
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Draw the widget onto the provided surface.
 

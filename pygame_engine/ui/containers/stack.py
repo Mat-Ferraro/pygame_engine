@@ -1,6 +1,4 @@
 """
-Transparent stack container for pygame_engine.
-
 Stack is the lightweight grouping container:
 - no background
 - no border
@@ -14,6 +12,12 @@ overlays, HUD layers, root widget trees, transparent composites.
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -126,7 +130,7 @@ class Stack(Widget, FocusManager):
         for child in self._children:
             child.update(dt)
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Render all children in add-order.
 
@@ -141,9 +145,9 @@ class Stack(Widget, FocusManager):
             surface.set_clip(self.rect)
             try:
                 for child in self._children:
-                    child.render(surface)
+                    child.render(surface, ctx)
             finally:
                 surface.set_clip(old_clip)
         else:
             for child in self._children:
-                child.render(surface)
+                child.render(surface, ctx)

@@ -1,6 +1,4 @@
 """
-tests/test_panel.py
-
 Tests for pygame_engine.ui.containers.Panel.
 
 Covers: child management, event routing, focus management opt-in,
@@ -13,6 +11,15 @@ import pytest
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.ui.containers.panel import Panel
 
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 RECT = pygame.Rect(0, 0, 400, 300)
 
@@ -172,13 +179,13 @@ def test_update_skipped_when_invisible() -> None:
 def test_render_does_not_raise(display_surface) -> None:
     p = Panel(RECT)
     p.add(Widget(pygame.Rect(0, 0, 50, 30)))
-    p.render(display_surface)
+    p.render(display_surface, _ctx())
 
 
 def test_invisible_panel_skips_render(display_surface) -> None:
     p = Panel(RECT)
     p.visible = False
-    p.render(display_surface)  # should not raise
+    p.render(display_surface, _ctx())  # should not raise
 
 
 # ── set_rect ──────────────────────────────────────────────────────────────────

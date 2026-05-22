@@ -1,8 +1,4 @@
 """
-A Badge is a compact, non-interactive status indicator that communicates
-a category, state, or count at a glance. Common uses: hero class labels,
-status indicators (Injured, Expiring, Ready), item rarity, tier markers.
-
 Usage::
 
     from pygame_engine.ui.controls.badge import Badge
@@ -20,9 +16,14 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import pygame
 
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -99,19 +100,19 @@ class Badge(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the badge onto surface."""
         if not self.visible:
             return
         if self._dirty:
-            self._rebuild()
+            self._rebuild(ctx)
         if self._surf is not None:
             surface.blit(self._surf, self.rect.topleft)
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-    def _rebuild(self) -> None:
-        theme      = get_theme()
+    def _rebuild(self, ctx: "RenderContext") -> None:
+        theme      = ctx.theme
         font_size  = self._font_size or theme.typography.sm
         self._font = pygame.font.SysFont(theme.typography.family, font_size)
 

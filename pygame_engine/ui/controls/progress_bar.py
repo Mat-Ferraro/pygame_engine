@@ -1,6 +1,4 @@
 """
-ProgressBar widget for pygame_engine.
-
 Displays a filled bar representing a ratio from 0.0 to 1.0.
 Useful for health bars, loading screens, XP bars, volume sliders,
 cooldown indicators — anything that shows progress or a proportion.
@@ -34,9 +32,14 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import pygame
 
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -107,12 +110,12 @@ class ProgressBar(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the progress bar onto surface."""
         if not self.visible:
             return
 
-        theme  = get_theme()
+        theme = ctx.theme
         radius = (self._border_radius
                   if self._border_radius is not None
                   else theme.panel.surface.radius)

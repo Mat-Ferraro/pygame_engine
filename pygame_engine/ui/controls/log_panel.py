@@ -1,8 +1,4 @@
 """
-A read-only panel that accumulates lines of text and displays them
-newest-at-bottom. Auto-scrolls to follow new entries by default.
-Used for event logs, combat narration, training results, status feeds.
-
 Usage::
 
     from pygame_engine.ui.controls.log_panel import LogPanel
@@ -18,6 +14,12 @@ Usage::
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -132,12 +134,12 @@ class LogPanel(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the log panel onto surface."""
         if not self.visible:
             return
 
-        theme = get_theme()
+        theme = ctx.theme
         self._ensure_font(theme)
 
         draw_rect_bordered(

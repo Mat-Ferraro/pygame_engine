@@ -1,9 +1,16 @@
-"""tests/test_rich_label.py — RichLabel widget and markup parser tests."""
-
 import pygame
 import pytest
 
 from pygame_engine.ui.text.rich_label import RichLabel, _parse_hex, parse_markup
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 RECT = pygame.Rect(0, 0, 400, 32)
 BASE_COLOUR = (200, 200, 200)
@@ -142,31 +149,31 @@ def test_rich_label_align_setter():
 
 
 def test_rich_label_render_plain_text(display_surface):
-    RichLabel(RECT, "Hello world").render(display_surface)
+    RichLabel(RECT, "Hello world").render(display_surface, _ctx())
 
 
 def test_rich_label_render_bold(display_surface):
-    RichLabel(RECT, "[b]bold[/b]").render(display_surface)
+    RichLabel(RECT, "[b]bold[/b]").render(display_surface, _ctx())
 
 
 def test_rich_label_render_colored(display_surface):
-    RichLabel(RECT, "[color=#ff4444]red[/color] and normal").render(display_surface)
+    RichLabel(RECT, "[color=#ff4444]red[/color] and normal").render(display_surface, _ctx())
 
 
 def test_rich_label_render_mixed(display_surface):
     RichLabel(RECT,
               "[b]Bold[/b] [i]italic[/i] [size=14]small[/size]"
-              ).render(display_surface)
+              ).render(display_surface, _ctx())
 
 
 def test_rich_label_invisible_skips_render(display_surface):
     lbl = RichLabel(RECT, "hidden")
     lbl.visible = False
-    lbl.render(display_surface)   # should not raise
+    lbl.render(display_surface, _ctx())   # should not raise
 
 
 def test_rich_label_empty_text(display_surface):
-    RichLabel(RECT, "").render(display_surface)
+    RichLabel(RECT, "").render(display_surface, _ctx())
 
 
 def test_rich_label_set_rect_marks_dirty():
@@ -179,7 +186,7 @@ def test_rich_label_set_rect_marks_dirty():
 def test_rich_label_cache_built_on_first_render(display_surface):
     lbl = RichLabel(RECT, "[b]test[/b]")
     assert lbl._dirty is True
-    lbl.render(display_surface)
+    lbl.render(display_surface, _ctx())
     assert lbl._dirty is False
     assert len(lbl._cache) > 0
 
@@ -192,8 +199,8 @@ def test_rich_label_font_cache_reused():
 
 
 def test_rich_label_align_center(display_surface):
-    RichLabel(RECT, "centered", align="center").render(display_surface)
+    RichLabel(RECT, "centered", align="center").render(display_surface, _ctx())
 
 
 def test_rich_label_align_right(display_surface):
-    RichLabel(RECT, "right", align="right").render(display_surface)
+    RichLabel(RECT, "right", align="right").render(display_surface, _ctx())

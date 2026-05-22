@@ -1,13 +1,14 @@
-"""
-It uses theme label defaults unless explicit overrides are supplied.
-"""
-
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
 from pygame_engine.graphics.text_utils import wrap_text
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 _UNSET = object()
@@ -100,18 +101,18 @@ class TextBlock(Widget):
         super().set_rect(rect)
         self._dirty = True
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the text block onto surface, rebuilding the cache if dirty."""
         if not self.visible:
             return
         if self._dirty or self._cache_surface is None:
-            self._cache_surface = self._build_surface()
+            self._cache_surface = self._build_surface(ctx)
             self._dirty         = False
         if self._cache_surface is not None:
             surface.blit(self._cache_surface, self.rect.topleft)
 
-    def _build_surface(self) -> pygame.Surface:
-        theme = get_theme()
+    def _build_surface(self, ctx: "RenderContext") -> pygame.Surface:
+        theme = ctx.theme
 
         font_size = (
             theme.label.text.font_size

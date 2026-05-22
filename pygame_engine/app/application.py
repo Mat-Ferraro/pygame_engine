@@ -36,6 +36,7 @@ from pygame_engine.scene.scene import Scene
 from pygame_engine.scene.scene_manager import SceneManager
 from pygame_engine.state.runtime_flags import flags as _runtime_flags
 from pygame_engine.theme.defaults import Theme
+from pygame_engine.app.render_context import RenderContext
 from pygame_engine.theme.runtime import get_theme, set_theme
 
 
@@ -184,7 +185,8 @@ class Application:
 
             # 6. Render scene flow
             if self._scene_manager is not None:
-                self._scene_manager.render(self._display_surface)
+                ctx = RenderContext(theme=get_theme())
+                self._scene_manager.render(self._display_surface, ctx)
 
             # 7. Render debug overlays (self-check flags; no-op when off)
             self._debug_overlay.render(

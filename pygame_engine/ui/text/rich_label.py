@@ -1,11 +1,4 @@
 """
-[b]bold text[/b]
-    [i]italic text[/i]
-    [b][i]bold italic[/i][/b]
-    [color=#ff4444]red text[/color]
-    [color=#80ff80]green text[/color]
-    [size=24]big text[/size]
-
 Tags may be nested. Unknown or malformed tags are rendered as literal text.
 
 Usage::
@@ -23,6 +16,12 @@ Usage::
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import re
 from dataclasses import dataclass, field
@@ -232,7 +231,7 @@ class RichLabel(Widget):
 
     # ── Rendering ─────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the rich label onto surface."""
         if not self.visible:
             return

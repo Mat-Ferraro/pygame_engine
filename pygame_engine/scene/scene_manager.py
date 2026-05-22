@@ -1,6 +1,4 @@
 """
-SceneManager orchestrates scene flow for pygame_engine.
-
 It owns the SceneStack and is the only place that calls scene lifecycle
 hooks (on_enter, on_exit, on_pause, on_resume). Application drives
 SceneManager each frame; game code interacts with it to change scenes.
@@ -20,6 +18,12 @@ Non-responsibilities
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -197,7 +201,7 @@ class SceneManager:
                 self._transition = None
                 self._trans_surf  = None
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Render the scene stack, compositing any active transition.
 
@@ -208,7 +212,7 @@ class SceneManager:
         When no transition is active: delegates directly to SceneStack.
         """
         if self._transition is None:
-            self._stack.render(surface)
+            self._stack.render(surface, ctx)
             return
 
         # Ensure temp surface matches display size
@@ -218,7 +222,7 @@ class SceneManager:
 
         # Render incoming scene onto temp surface
         self._trans_surf.fill((0, 0, 0))
-        self._stack.render(self._trans_surf)
+        self._stack.render(self._trans_surf, ctx)
 
         # Let transition composite everything onto the display surface
         self._transition.render(surface, self._trans_surf)

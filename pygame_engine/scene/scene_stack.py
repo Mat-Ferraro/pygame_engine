@@ -1,6 +1,4 @@
 """
-scene/scene_stack.py
-
 Stack-based scene container for pygame_engine.
 
 SceneStack owns the ordered list of active scenes and handles the three
@@ -21,6 +19,12 @@ SceneStack only manages the container and the frame traversals.
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
 
 import pygame
 
@@ -131,7 +135,7 @@ class SceneStack:
             if scene.blocks_update_below:
                 break
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """
         Render scenes bottom-up, starting from the lowest visible scene.
 
@@ -156,4 +160,4 @@ class SceneStack:
 
         # Render bottom-up from render_from so higher scenes composite on top.
         for scene in self._stack[render_from:]:
-            scene.render(surface)
+            scene.render(surface, ctx)

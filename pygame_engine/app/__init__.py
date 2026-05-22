@@ -1,6 +1,4 @@
 """
-pygame_engine.app
-
 Application bootstrap and configuration.
 
 Public API::
@@ -10,5 +8,6 @@ Public API::
 
 from pygame_engine.app.application import Application
 from pygame_engine.app.config import AppConfig
+from pygame_engine.app.render_context import RenderContext
 
-__all__ = ["Application", "AppConfig"]
+__all__ = ["Application", "AppConfig", "RenderContext"]

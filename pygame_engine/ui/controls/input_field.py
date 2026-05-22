@@ -1,8 +1,4 @@
 """
-Supports typing, cursor movement, backspace, placeholder text, and
-focus management. Uses pygame's TEXTINPUT event system for correct
-Unicode and IME handling.
-
 v1 scope: typing, backspace, cursor movement (arrows, Home, End),
 click-to-focus, placeholder, on_change/on_submit callbacks.
 
@@ -33,12 +29,17 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import math
 from typing import Callable
 
 import pygame
 
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -224,12 +225,12 @@ class InputField(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the input field onto surface."""
         if not self.visible:
             return
 
-        theme  = get_theme()
+        theme = ctx.theme
         font   = self._get_font(theme)
         pad    = self._padding
 
@@ -328,7 +329,7 @@ class InputField(Widget):
         cursor_y1 = self.rect.y + 6
         cursor_y2 = self.rect.bottom - 6
 
-        theme = get_theme()
+        theme = ctx.theme
         pygame.draw.line(surface, theme.colours.text,
                          (cursor_x, cursor_y1), (cursor_x, cursor_y2), 2)
 

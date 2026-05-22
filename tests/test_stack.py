@@ -1,6 +1,4 @@
 """
-tests/test_stack.py
-
 Tests for pygame_engine.ui.containers.Stack.
 """
 
@@ -10,6 +8,15 @@ import pytest
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.ui.containers.stack import Stack
 
+
+
+# ── CHANGE-02: RenderContext helper ──────────────────────────────────────────
+
+def _ctx():
+    """Return a default RenderContext for render() calls in tests."""
+    from pygame_engine.app.render_context import RenderContext
+    from pygame_engine.theme.runtime import get_theme
+    return RenderContext(theme=get_theme())
 
 class TrackingWidget(Widget):
     """Records received events."""
@@ -196,10 +203,10 @@ def test_invisible_stack_skips_render(display_surface) -> None:
     s = Stack(RECT)
     s.add(Widget(RECT))
     s.visible = False
-    s.render(display_surface)   # should not raise
+    s.render(display_surface, _ctx())   # should not raise
 
 
 def test_render_does_not_raise(display_surface) -> None:
     s = Stack(RECT)
     s.add(Widget(RECT))
-    s.render(display_surface)
+    s.render(display_surface, _ctx())

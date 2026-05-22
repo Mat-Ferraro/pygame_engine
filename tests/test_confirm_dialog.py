@@ -1,7 +1,8 @@
-"""Tests for ConfirmDialog."""
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-os.environ["SDL_AUDIODRIVER"] = "dummy"
+from pygame_engine.app.render_context import RenderContext
+from pygame_engine.theme.runtime import get_theme
+
+def _ctx():
+    return RenderContext(theme=get_theme())
 
 import pygame
 import pytest
@@ -189,10 +190,10 @@ def test_push_returns_dialog_instance():
 def test_render_does_not_raise():
     surf = pygame.Surface((1920, 1080))
     dlg, _ = make_dialog(message="Confirm deletion?")
-    dlg._render(surf)
+    dlg._render(surf, _ctx())
 
 
 def test_render_multiline_message_does_not_raise():
     surf = pygame.Surface((1920, 1080))
     dlg, _ = make_dialog(message="Line one\nLine two\nLine three")
-    dlg._render(surf)
+    dlg._render(surf, _ctx())

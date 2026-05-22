@@ -1,8 +1,4 @@
 """
-The universal pattern for presenting structured data: a left column of
-muted labels, a right column of primary values. Used in hero detail panels,
-item inspectors, settings summaries, and stat displays.
-
 Usage::
 
     from pygame_engine.ui.controls.key_value_panel import KeyValuePanel
@@ -25,10 +21,15 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+
 import pygame
 
 from pygame_engine.graphics.draw_utils import draw_rect_bordered
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -99,12 +100,12 @@ class KeyValuePanel(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the key-value panel onto surface."""
         if not self.visible:
             return
 
-        theme = get_theme()
+        theme = ctx.theme
 
         draw_rect_bordered(
             surface, self.rect,

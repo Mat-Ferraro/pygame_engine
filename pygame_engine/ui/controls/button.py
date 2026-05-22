@@ -1,6 +1,4 @@
 """
-Button widget for pygame_engine.
-
 Reads all visual style values from the active theme. Per-instance
 colour overrides are not yet supported — override the theme instead.
 
@@ -17,12 +15,19 @@ Usage::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pygame_engine.app.render_context import RenderContext
+
+from pygame_engine.theme.runtime import get_theme
+
+
 from typing import Callable
 
 import pygame
 
 from pygame_engine.graphics.draw_utils import draw_surface_style
-from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.ui.text.label import Label
 
@@ -116,7 +121,7 @@ class Button(Widget):
 
     def update(self, dt: float) -> None:
         """Update hover and pressed state from the current mouse position."""
-        theme = get_theme()
+        theme = ctx.theme
         self._label.colour = (
             theme.button.text_disabled.colour
             if not self.enabled
@@ -125,12 +130,12 @@ class Button(Widget):
 
     # ── Render ────────────────────────────────────────────────────────────────
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, ctx: "RenderContext") -> None:
         """Draw the button onto surface."""
         if not self.visible:
             return
 
-        theme = get_theme()
+        theme = ctx.theme
         style = self._resolve_style(theme)
 
         draw_surface_style(surface, self.rect, style)
