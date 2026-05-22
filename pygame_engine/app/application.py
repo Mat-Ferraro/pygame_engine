@@ -131,14 +131,14 @@ class Application:
         self._input_manager = InputManager()
         self._assets = AssetLoader(
             self._config.asset_root,
-            debug=self._config.debug,
+            debug=(self._config.mode == "development"),
         )
         self._audio = AudioManager()
 
         # Reset runtime flags to defaults, then apply config.debug.
         # Debug overlay and console check these flags themselves each frame.
         _runtime_flags.reset()
-        if self._config.debug:
+        if self._config.mode == "development":
             _runtime_flags.enable_debug_all()
 
         self._scene_manager = SceneManager()
@@ -287,7 +287,7 @@ class Application:
         Handle a window resize event.
 
         Recreates the display surface, emits ``window.resized`` on the
-        event bus, and notifies the current scene via notify_resize.
+        event bus, and notifies the current scene via ``notify_resize``.
 
         Args:
             width:  New window width in pixels.
@@ -303,19 +303,19 @@ class Application:
         if self._scene_manager is not None:
             self._scene_manager.notify_resize(width, height)
 
-    # ── Delta-time ────────────────────────────────────────────────────────────
-
     @property
     def screen_rect(self) -> pygame.Rect:
         """
         Return a Rect covering the full screen at the current size.
 
-        Safe to call before run() — returns config dimensions.
+        Safe to call before ``run()`` — returns config dimensions.
         After a resize, reflects the new size.
         """
         if self._display_surface is not None:
             return self._display_surface.get_rect()
         return pygame.Rect(0, 0, self._config.width, self._config.height)
+
+    # ── Delta-time ────────────────────────────────────────────────────────────
 
     def _compute_dt(self, raw_ms: int) -> float:
         """Convert raw milliseconds from the clock into a clamped dt in seconds."""
@@ -370,6 +370,21 @@ class Application:
                 "input_manager is not available before Application.run() is called."
             )
         return self._input_manager
+
+    @property
+    def mode(self) -> str:
+        """The operating mode this application was created with."""
+        return self._config.mode
+
+    @property
+    def reduced_motion(self) -> bool:
+        """
+        True when reduced-motion accessibility mode is active.
+
+        Check this before running any animation. When True, animations
+        should snap to their end state rather than playing through.
+        """
+        return self._config.reduced_motion
 
     @property
     def config(self) -> AppConfig:

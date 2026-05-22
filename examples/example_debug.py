@@ -1,6 +1,4 @@
 """
-Demonstrates debug tools: debug_log, RuntimeFlags, and debug overlays.
-
 What this example shows:
 - F1 toggles the debug overlay (FPS, scene, stack, active flags)
 - F3 toggles the debug console log panel
@@ -220,7 +218,7 @@ def run() -> None:
         title="pygame_engine — debug tools",
         width=1280, height=720,
         resizable=True,
-        debug=True,
+        mode="development",
     ))
     app.run(DebugExampleScene(app))
 

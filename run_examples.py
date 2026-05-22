@@ -1,6 +1,4 @@
 """
-Interactive example launcher for pygame_engine development.
-
 Lists all available examples with descriptions and lets you pick one
 to run. Supports number selection, partial name matching, and
 command-line arguments.
@@ -23,6 +21,7 @@ import sys
 
 EXAMPLES: list[tuple[str, str, str]] = [
     # Core
+    ("example_observable",        "Observable: weak refs, transactions, SubscriptionGroup", "Core"),
     ("example_app",               "Application spine, Tween, animated widget, Timer",        "Core"),
     ("example_scene",             "Scene push / pop / replace, overlay blocking flags",       "Core"),
     ("example_transitions",       "Fade, Slide (4 dirs), Crossfade between scenes",           "Core"),

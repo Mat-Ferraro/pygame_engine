@@ -1,6 +1,4 @@
 """
-tests/test_application.py
-
 Integration tests for pygame_engine.app.Application and AppConfig.
 
 These tests cover the runtime spine without running the full game loop.
@@ -45,7 +43,8 @@ def test_appconfig_defaults() -> None:
     assert config.height     == 720
     assert config.target_fps == 60
     assert config.max_dt     == 0.1
-    assert config.debug      is False
+    assert config.mode        == "development"
+    assert config.reduced_motion is False
     assert config.resizable  is False
     assert config.fullscreen is False
     assert config.vsync      is False
@@ -54,12 +53,12 @@ def test_appconfig_defaults() -> None:
 
 def test_appconfig_custom_values() -> None:
     config = AppConfig(title="Test", width=800, height=600,
-                       target_fps=30, debug=True)
+                       target_fps=30, mode="production")
     assert config.title      == "Test"
     assert config.width      == 800
     assert config.height     == 600
     assert config.target_fps == 30
-    assert config.debug      is True
+    assert config.mode       == "production"
 
 
 def test_appconfig_default_factory_is_independent() -> None:
@@ -161,14 +160,14 @@ def test_compute_dt_normal_frame_not_clamped() -> None:
 
 # ── Debug flag activation ─────────────────────────────────────────────────────
 
-def test_debug_false_does_not_enable_flags() -> None:
+def test_production_mode_does_not_enable_flags_legacy() -> None:
     from pygame_engine.state.runtime_flags import flags
     flags.reset()
 
-    app = Application(AppConfig(debug=False))
+    app = Application(AppConfig(mode="production"))
     # Simulate the flag portion of _startup without running the full loop
     flags.reset()
-    if app.config.debug:
+    if app.config.mode == "development":
         flags.enable_debug_all()
 
     assert flags.debug        is False
@@ -177,13 +176,13 @@ def test_debug_false_does_not_enable_flags() -> None:
     flags.reset()   # cleanup
 
 
-def test_debug_true_enables_all_flags() -> None:
+def test_development_mode_enables_all_flags_legacy() -> None:
     from pygame_engine.state.runtime_flags import flags
     flags.reset()
 
-    app = Application(AppConfig(debug=True))
+    app = Application(AppConfig(mode="development"))
     flags.reset()
-    if app.config.debug:
+    if app.config.mode == "development":
         flags.enable_debug_all()
 
     assert flags.debug        is True
@@ -246,6 +245,73 @@ def test_set_theme_updates_global_theme() -> None:
     app.set_theme(new_theme)
     assert get_theme() is new_theme
     app.set_theme(original)   # restore
+
+
+
+# ── AppMode and reduced_motion ────────────────────────────────────────────────
+
+def test_appconfig_mode_default_is_development() -> None:
+    config = AppConfig()
+    assert config.mode == "development"
+
+
+def test_appconfig_mode_production() -> None:
+    config = AppConfig(mode="production")
+    assert config.mode == "production"
+
+
+def test_appconfig_mode_testing() -> None:
+    config = AppConfig(mode="testing")
+    assert config.mode == "testing"
+
+
+def test_appconfig_reduced_motion_default_false() -> None:
+    config = AppConfig()
+    assert config.reduced_motion is False
+
+
+def test_appconfig_reduced_motion_can_be_set() -> None:
+    config = AppConfig(reduced_motion=True)
+    assert config.reduced_motion is True
+
+
+def test_app_mode_property() -> None:
+    app = Application(AppConfig(mode="production"))
+    assert app.mode == "production"
+
+
+def test_app_reduced_motion_property_false() -> None:
+    app = Application(AppConfig())
+    assert app.reduced_motion is False
+
+
+def test_app_reduced_motion_property_true() -> None:
+    app = Application(AppConfig(reduced_motion=True))
+    assert app.reduced_motion is True
+
+
+def test_production_mode_does_not_enable_flags() -> None:
+    from pygame_engine.state.runtime_flags import flags
+    flags.reset()
+    app = Application(AppConfig(mode="production"))
+    flags.reset()
+    if app.config.mode == "development":
+        flags.enable_debug_all()
+    assert flags.debug is False
+    assert flags.show_overlay is False
+    flags.reset()
+
+
+def test_development_mode_enables_all_flags() -> None:
+    from pygame_engine.state.runtime_flags import flags
+    flags.reset()
+    app = Application(AppConfig(mode="development"))
+    flags.reset()
+    if app.config.mode == "development":
+        flags.enable_debug_all()
+    assert flags.debug is True
+    assert flags.show_overlay is True
+    flags.reset()
 
 
 # ── Resize handler ────────────────────────────────────────────────────────────

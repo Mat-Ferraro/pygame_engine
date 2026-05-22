@@ -29,6 +29,7 @@ import pygame
 
 from pygame_engine.ui.base.widget import Widget
 
+from pygame_engine.state.subscription_group import SubscriptionGroup
 
 class Scene:
     """
@@ -57,6 +58,23 @@ class Scene:
     events to the root widget *before* the scene's own ``handle_event``
     logic, so UI can consume input first. See ``handle_event`` for detail.
     """
+
+
+    def __init__(self) -> None:
+        """
+        Initialise base scene state.
+
+        Subclasses that define their own ``__init__`` must call
+        ``super().__init__()`` to ensure the subscription group is created.
+        """
+        self.subscriptions: SubscriptionGroup = SubscriptionGroup()
+        """
+        Subscription group for this scene.
+
+        Subscribe to observables via ``self.subscriptions.on(observable, callback)``
+        instead of ``observable.subscribe(callback)`` directly. All tracked
+        subscriptions are automatically cancelled when the scene exits.
+        """
 
     # ── Blocking policy ───────────────────────────────────────────────────────
 
@@ -108,6 +126,7 @@ class Scene:
         Not called when a scene is merely paused by a push — that is
         ``on_pause``.
         """
+        self.subscriptions.dispose()
 
     def on_pause(self) -> None:
         """
@@ -127,18 +146,18 @@ class Scene:
         restart any visual indicators that were paused.
         """
 
+
     def on_resize(self, width: int, height: int) -> None:
         """
         Called when the window is resized.
 
-        Override to rebuild layout rects computed against the old size.
-        Only the top-of-stack scene receives this call.
+        Override to rebuild layout rects that were computed against the
+        previous screen size. Only the top-of-stack scene receives this call.
 
         Args:
             width:  New window width in pixels.
             height: New window height in pixels.
         """
-
     # ── Frame methods ─────────────────────────────────────────────────────────
 
     def handle_event(self, event: pygame.event.Event) -> bool:

@@ -1,15 +1,3 @@
-"""
-Pre-wired with stubs for the most common 2D game systems:
-- Camera (follow player, world bounds)
-- Tilemap (rendering + collision)
-- Lighting (dark overlay with player light)
-- Positional audio (listener follows player)
-- Animation state machine (idle/run/jump)
-- Pathfinding (obstacle grid from tilemap)
-- LogPanel for in-game event log
-- Pause on ESC or P
-"""
-
 from __future__ import annotations
 
 import pygame
@@ -162,10 +150,11 @@ class GameScene(Scene):
         )
 
     def update(self, dt: float) -> None:
-        # When implementing animations that change with time, always check
-        # app.reduced_motion first per ACCESSIBILITY_STANDARDS.md Section 4:
-#           if not self._app.reduced_motion:
-#               self._t += dt
+        # When implementing animations that change with time, check
+        # app.reduced_motion first per ACCESSIBILITY_STANDARDS.md Section 4.
+        # Replace self._t with your own accumulator variable:
+        #   if not self._app.reduced_motion:
+        #       self._t += dt
 
         if self._camera:
             self._camera.update(dt)

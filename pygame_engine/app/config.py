@@ -1,6 +1,4 @@
 """
-app/config.py
-
 Runtime configuration for the Application.
 
 AppConfig is a plain dataclass — it holds values, owns no logic.
@@ -12,6 +10,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
+
+
+AppMode = Literal["development", "production", "testing"]
+"""
+Application operating mode.
+
+- ``"development"``  — debug overlays enabled, developer errors raise,
+                       placeholders shown for missing assets.
+- ``"production"``   — no debug tools, errors emitted on bus, silent.
+- ``"testing"``      — like development but exceptions re-raised so
+                       pytest can catch them.
+"""
 
 
 @dataclass
@@ -19,8 +30,9 @@ class AppConfig:
     """
     All configuration an Application needs to initialise itself.
 
-    Fields are grouped by concern: window, timing, display, paths, dev tools.
-    Every field has a sensible default so callers only specify what differs.
+    Fields are grouped by concern: window, timing, display, paths,
+    mode and accessibility. Every field has a sensible default so
+    callers only specify what differs.
 
     Usage::
 
@@ -75,12 +87,24 @@ class AppConfig:
     Override this in game projects to point at the game's asset folder.
     """
 
-    # ── Dev / debug ───────────────────────────────────────────────────────────
+    # ── Mode and accessibility ────────────────────────────────────────────────
 
-    debug: bool = False
+    mode: AppMode = "development"
     """
-    Enable debug mode.
+    Operating mode for this Application instance.
 
-    When True the Application will activate debug overlays and
-    verbose logging. Has no effect on release builds that strip debug tools.
+    Controls error handling, debug tool activation, and asset placeholder
+    behaviour. See :data:`AppMode` for the three valid values.
+    """
+
+    reduced_motion: bool = False
+    """
+    Accessibility flag — reduce or skip animations.
+
+    When True, all animation systems should snap to their end state
+    instead of playing through. Check via ``app.reduced_motion`` in
+    scenes and ``AppConfig.reduced_motion`` in pre-startup code.
+
+    Respect this flag in every scene that runs animations:
+    ``if not app.reduced_motion: self._tween.update(dt)``
     """
