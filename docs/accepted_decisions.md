@@ -300,3 +300,50 @@ def overlay_render(self, surface):
 
 Default implementation is a no-op. Scenes that do not use floating
 widgets do not need to override it.
+
+---
+
+### 25. Scene Descriptor Is the Source of Truth for UI Layout
+
+A `DescribedScene`'s UI is **authored as data** — a `SceneDescriptor` tree of
+`WidgetNode`s — not built imperatively in scene code. The engine realises the
+descriptor into the live widget tree; the editor edits the descriptor; the
+live widgets follow.
+
+**Rationale.** The engine previously held two unreconciled models of a
+scene's UI: the live widget tree (what rendered) and the `SceneDescriptor`
+(what the editor inspected). Nothing connected them, leaving the
+`layout_builder` DSL, the `WidgetNode` prefab fields, and `.layout.json`
+persistence built but unused. This decision makes the descriptor the single
+model and removes that redundancy.
+
+**Mechanism.**
+
+- `pygame_engine/ui/widget_registry.py` — the single source of truth for
+  which widget types exist and how each is constructed from a `WidgetNode`.
+  Built-in types self-register; games register custom types with
+  `@register(...)`. An unknown type raises, never silently no-ops.
+- `pygame_engine/scene/layout_loader.py` — `LayoutLoader` walks a descriptor,
+  builds the widget tree via the registry, and subscribes each widget's rect
+  to its `node.rect` so descriptor edits move the live widget.
+- `DescribedScene.on_enter()` runs `_build_layout()` → `LayoutLoader` →
+  assigns `root_widget` → `_bind_behavior()`.
+
+**Layout vs behaviour.** The descriptor stores structure and geometry only,
+so it stays JSON-serialisable. Behaviour — `on_click` handlers, navigation —
+is **not** stored in the descriptor. Scenes attach it in `_bind_behavior()`
+after the widgets exist, by looking widgets up via `widget_id`.
+
+**Re-runnable layout.** `_build_layout()` must be safe to call repeatedly: it
+runs on enter and again on every `on_resize()`. The base class clears the
+descriptor before each call; subclasses compute geometry against
+`self.screen_rect`, which is refreshed on resize.
+
+**Consequence.** Scenes that want descriptor-driven UI subclass
+`DescribedScene`; scenes that do not subclass `Scene` directly. Real scenes
+migrate to `DescribedScene` over time — `MainMenuScene` was migrated first as
+the proving case.
+
+**Deferred.** Storing unresolved anchor/layout specs in the descriptor (so
+layouts re-flow without re-running `_build_layout()`) is a future design
+effort, not part of this decision. See `docs/sprints/SPRINT_descriptor_authority.md`.

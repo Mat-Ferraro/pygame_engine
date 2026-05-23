@@ -97,6 +97,27 @@ class AppConfig:
     behaviour. See :data:`AppMode` for the three valid values.
     """
 
+    error_scene_class: type | None = None
+    """
+    Optional custom error scene class.
+
+    When set, Application pushes an instance of this class when a runtime
+    error occurs in a scene, instead of the built-in ``ErrorScene``.
+
+    The class must accept ``(exc: BaseException, mode: str)`` as constructor
+    arguments::
+
+        class MyErrorScene(Scene):
+            def __init__(self, exc, mode):
+                super().__init__()
+                self._exc  = exc
+                self._mode = mode
+
+        config = AppConfig(error_scene_class=MyErrorScene)
+
+    Default: ``None`` — uses the built-in ``ErrorScene``.
+    """
+
     reduced_motion: bool = False
     """
     Accessibility flag — reduce or skip animations.

@@ -1,11 +1,8 @@
 > **Note on Phase Numbering**
-> This document tracks the original development phases (v1.x, Phases 1–13).
-> Future development phases are defined in `IMPLEMENTATION_ORDER.md`, which
-> uses different phase numbering for the v2.0 design work (Phase 1 = Observable
-> upgrade, Phase 2 = Engine infrastructure, etc.). These are separate numbering
-> schemes for separate eras of development.
-
----
+> This document tracks the original development phases (v1.x, Phases 1–13)
+> and the subsequent v2.0 infrastructure phases (Phase A, Phase B).
+> Phase numbering in `IMPLEMENTATION_ORDER.md` uses a different scheme for
+> the v2.0 design work. These are separate numbering schemes.
 
 ---
 
@@ -14,7 +11,7 @@ intentional, preventing random feature drift.
 
 ---
 
-## Current Status — v1.0 Complete, Phase 9 Complete, Phase 10 Planned
+## Current Status — v1.4.0 — Phases 1–13 + Phase A + Phase B Complete
 
 | Phase | Status | Summary |
 |-------|--------|---------|
@@ -31,12 +28,80 @@ intentional, preventing random feature drift.
 | Phase 11 — Game AI & Systems     | ✅ Complete | Pathfinding, animation state machine, positional audio, 2D lighting |
 | Phase 12 — Input & Controllers   | ✅ Complete | Key remapping, controller support, binding persistence |
 | Phase 13 — Theming & Rich Text   | ✅ Complete | File-driven JSON theming, live reload, RichLabel with markup |
+| Phase A — Observable Upgrade     | ✅ Complete | Observable (old/new sig, weak refs, transactions), SubscriptionGroup, RenderContext, AppConfig mode/reduced_motion |
+| Phase B — Engine Infrastructure  | ✅ Complete | TimeManager, extension hooks, GlobalFocusManager, widget_id/tab_index/focus_trap, AudioBus topology |
+
+---
+
+## Phase A — Observable Upgrade ✅ Complete
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `Observable[T]` upgrade | ✅ Done | Subscriber signature `(old, new)`, weak refs via `WeakMethod`, `transaction()`, `set_silent()` |
+| `SubscriptionGroup` | ✅ Done | `on()`, `add()`, `dispose()` — wired into `Scene.on_exit()` for auto-cleanup |
+| `AppConfig.mode` | ✅ Done | `"development"` / `"production"` / `"testing"` — controls debug tools and error behaviour |
+| `AppConfig.reduced_motion` | ✅ Done | Accessibility flag; scenes check `app.reduced_motion` before playing animations |
+| `RenderContext` | ✅ Done | Frozen dataclass carrying per-frame theme snapshot; threaded through all `render(surface, ctx)` calls |
+
+---
+
+## Phase B — Engine Infrastructure ✅ Complete
+
+### Phase B1 — TimeManager
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `TimeManager` class | ✅ Done | `time_scale`, `delta_time`, `unscaled_delta_time`, `time`, `unscaled_time`, `frame_count` |
+| `time_scale: Observable[float]` | ✅ Done | Set to `0.0` to pause all game logic; `0.5` for slow-mo |
+| `max_delta_time` | ✅ Done | Clamp guard against spiral-of-death after OS suspend / breakpoints |
+| `register_fixed_step(callback, rate)` | ✅ Done | Fixed-rate callbacks driven by scaled time; pause at `time_scale=0` |
+| `app.time` property | ✅ Done | Raises `RuntimeError` before `run()` is called |
+| Tests | ✅ Done | `tests/test_time_manager.py` — 32 tests |
+| Example | ✅ Done | `examples/example_time_manager.py` — pause, slow-mo, fixed-step demo |
+
+### Phase B2 — Extension Hooks
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `add_hook(name, callback, priority)` | ✅ Done | Six hooks: `startup`, `shutdown`, `pre_update`, `post_update`, `pre_render`, `post_render` |
+| `remove_hook(name, callback)` | ✅ Done | Returns `True` if found and removed |
+| Priority ordering | ✅ Done | Higher number fires later; equal priority fires in registration order |
+| Tests | ✅ Done | `tests/test_extension_hooks.py` — 20 tests |
+| Example | ✅ Done | `examples/example_hooks.py` — FrameLogger + FpsBar overlay via hooks |
+
+### Phase B3 — GlobalFocusManager
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `GlobalFocusManager` | ✅ Done | `set_focus`, `clear_focus`, `next_focus`, `prev_focus`, `set_candidates` |
+| `render_focus_ring(surface)` | ✅ Done | 2px ring drawn as post-render pass by Application |
+| `ui.focus.changed` bus event | ✅ Done | Emitted on every focus change; carries the newly focused widget |
+| `app.focus` property | ✅ Done | Available before `run()` — no pygame dependency |
+| `Widget.widget_id` | ✅ Done | Optional string identifier for tooling and tests |
+| `Widget.tab_index` | ✅ Done | Explicit Tab ordering; `None` = document order |
+| `Widget.focus_trap` | ✅ Done | Prevents Tab escaping a modal widget's subtree |
+| Tests | ✅ Done | `tests/test_global_focus.py` — 32 tests |
+| Example | ✅ Done | `examples/example_focus.py` — tab_index ordering, focus trap, bus events |
+
+### Phase B4 — AudioBus Topology
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `AudioBus` class | ✅ Done | `volume: Observable[float]`, `muted: Observable[bool]`, `effective_volume` via parent chain |
+| Built-in buses | ✅ Done | `master`, `music`, `sfx`, `ui` — wired as parent chain on `AudioManager` |
+| `ui` bus | ✅ Done | `respects_time_scale=False` — UI sounds play during game pause |
+| `create_bus(name, parent)` | ✅ Done | Register custom buses (cutscene, ambient, etc.) |
+| `get_bus(name)` | ✅ Done | Retrieve any registered bus by name |
+| `AudioManager.update(time_scale)` | ✅ Done | Propagates pause policy to all buses each frame |
+| `play_sfx(..., bus="ui")` | ✅ Done | Route sounds through any named bus |
+| Backward compatibility | ✅ Done | Flat API (`master_volume`, `muted`, etc.) preserved as shims |
+| Tests | ✅ Done | `tests/test_audio_bus.py` — 57 tests; `tests/test_audio.py` — 38 tests |
 
 ---
 
 ## Phase 9 — Game Systems ✅ Complete
 
-### Phase 9a — Widget Expansion ✅ Complete
+### Phase 9a — Widget Expansion
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -45,7 +110,7 @@ intentional, preventing random feature drift.
 | `RadioGroup` | ✅ Done | Mutually exclusive options, keyboard navigation |
 | `app.screen_rect` | ✅ Done | `pygame.Rect(0, 0, config.width, config.height)` property |
 
-### Phase 9b — Camera ✅ Complete
+### Phase 9b — Camera
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -55,7 +120,7 @@ intentional, preventing random feature drift.
 | World bounds | ✅ Done | `set_world_bounds()` clamps camera to world rect |
 | Visibility culling | ✅ Done | `is_visible(rect, margin)` for entity culling |
 
-### Phase 9c — Tilemap ✅ Complete
+### Phase 9c — Tilemap
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -66,7 +131,7 @@ intentional, preventing random feature drift.
 | Collision map | ✅ Done | `collides_rect()`, `get_colliding_tiles()`, `get_tile_at_world()` |
 | Tiled `.tmx` support | ⬜ Optional | Requires `pytmx`; deferred until a real game needs it |
 
-### Phase 9d — Dialogue ✅ Complete
+### Phase 9d — Dialogue
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -77,14 +142,9 @@ intentional, preventing random feature drift.
 
 ---
 
-## Phase 10 — Polish & Utilities 🔄 Planned
+## Phase 10 — Polish & Utilities ✅ Complete
 
-These items were deferred from earlier phases and are now queued for
-implementation. Each is scoped and ready to build.
-
-### Phase 10a — Screen Manager ✅ Complete
-
-Completes the "layout per scene size" work started with `app.screen_rect`.
+### Phase 10a — Screen Manager
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -93,20 +153,15 @@ Completes the "layout per scene size" work started with `app.screen_rect`.
 | `SceneManager` resize notification | ✅ Done | `notify_resize(w, h)` calls `on_resize` on top-of-stack scene only |
 | Layout rebuild hook | ✅ Done | `Scene.on_resize(width, height)` — override to rebuild layout rects |
 
-### Phase 10b — Responsive Layout ✅ Complete
-
-A lightweight anchor+flex hybrid — stateful helpers that recompute on resize.
+### Phase 10b — Responsive Layout
 
 | Item | Status | Notes |
 |------|--------|-------|
 | `FlexRow` | ✅ Done | Horizontal distribution with weights, fixed sizes, min/max, spacing, padding |
 | `FlexColumn` | ✅ Done | Vertical distribution with the same options as FlexRow |
 | `AnchorLayout` | ✅ Done | Pin widgets to screen edges; `apply(bounds)` in `on_resize()` |
-| Integration with Screen Manager | ✅ Done | All three classes designed to be called from `Scene.on_resize()` |
 
-### Phase 10c — Sprite Atlas ✅ Complete
-
-Pre-bake many small images into one surface to reduce blit overhead.
+### Phase 10c — Sprite Atlas
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -114,9 +169,7 @@ Pre-bake many small images into one surface to reduce blit overhead.
 | `AtlasPacker` | ✅ Done | Shelf-packing algorithm; `add()`, `build()`, `save()` with JSON metadata |
 | `AssetLoader` integration | ✅ Done | `app.assets.atlas(image_path, meta_path)` loads a pre-built atlas |
 
-### Phase 10d — Localisation ✅ Complete
-
-String key → translated string lookup. Engine-agnostic.
+### Phase 10d — Localisation
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -125,98 +178,26 @@ String key → translated string lookup. Engine-agnostic.
 | Format substitution | ✅ Done | `t("hud.score", value=42)` → `"Score: 42"` |
 | Locale switching | ✅ Done | `set_locale("fr")` hot-swaps; falls back to fallback locale |
 | Nested key flattening | ✅ Done | `{"menu": {"start": "Go"}}` → `"menu.start"` |
-| Game template integration | ✅ Done | `game/locale/en.json` + `game/locale/__init__.py` with `t()` shortcut |
 
 ---
 
-## Phase 11 — Game AI & Systems ✅ Complete
+## Phases 11–13 ✅ Complete
 
-### Phase 11a — Pathfinding ✅ Complete
+See earlier CHANGELOG entries for full detail. Summary:
 
-| Item | Status | Notes |
-|------|--------|-------|
-| `ObstacleGrid` | ✅ Done | 2D boolean grid; `from_tilemap()` factory; `set_obstacle()`, `fill()` |
-| `Pathfinder` | ✅ Done | A* with 4-dir and 8-dir (diagonal) movement; corner-cutting prevention |
-
-### Phase 11b — Animation State Machine ✅ Complete
-
-| Item | Status | Notes |
-|------|--------|-------|
-| `AnimationStateMachine` | ✅ Done | States, transitions, conditions, priority, any-state, on_enter/on_exit callbacks |
-
-### Phase 11c — 2D Positional Audio ✅ Complete
-
-| Item | Status | Notes |
-|------|--------|-------|
-| `PositionalAudio` | ✅ Done | Distance falloff, stereo panning, configurable rolloff |
-| `PositionalSource` | ✅ Done | Looping positioned sources with per-frame update |
-
-### Phase 11d — 2D Lighting ✅ Complete
-
-| Item | Status | Notes |
-|------|--------|-------|
-| `Light` | ✅ Done | World-position light with radius, colour, intensity, flicker |
-| `LightingSystem` | ✅ Done | Dark overlay with radial gradient cutouts; camera-aware |
-
----
-
-## Phase 12 — Input & Controllers ✅ Complete
-
-### Phase 12a — Key Remapping ✅ Complete
-
-| Item | Status | Notes |
-|------|--------|-------|
-| `InputManager.remap()` | ✅ Done | Rebind any action to a new key at runtime |
-| `InputManager.remap_controller()` | ✅ Done | Rebind controller buttons |
-| `get_key_for_action()` / `get_button_for_action()` | ✅ Done | Query current binding |
-| `bindings_to_dict()` / `bindings_from_dict()` | ✅ Done | Serialise for persistence |
-| `reset_to_defaults()` | ✅ Done | Restore default bindings |
-| `key_name()` / `controller_button_name()` | ✅ Done | Human-readable names for UI |
-| Settings scene Controls tab | ✅ Done | Live remapping UI with persistence |
-
-### Phase 12b — Controller Support ✅ Complete
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Joystick detection | ✅ Done | Auto-detects on `JOYDEVICEADDED`; hot-plug support |
-| Button → action mapping | ✅ Done | Same action strings as keyboard |
-| Axis → action mapping | ✅ Done | Left stick and D-pad → NAV_* actions with threshold |
-| Dead zone filtering | ✅ Done | Configurable via `ControllerConfig` |
-| `ControllerConfig` | ✅ Done | Dead zone, axis indices, threshold |
-| Raw axis access | ✅ Done | `get_axis(joy_id, axis)` for analogue movement |
-
----
-
-## Phase 13 — Theming & Rich Text ✅ Complete
-
-### Phase 13a — File-driven Theming ✅ Complete
-
-| Item | Status | Notes |
-|------|--------|-------|
-| `theme_from_file(path)` | ✅ Done | Load JSON theme override file; partial — only override what you need |
-| `reload_theme_file(path)` | ✅ Done | Load and immediately activate — hot-reload during development |
-| `theme_to_dict(theme)` | ✅ Done | Serialise active theme to JSON-compatible dict |
-| JSON format | ✅ Done | Colours as `[r,g,b]`, all keys optional, deep merge over defaults |
-| Sample `assets/theme.json` | ✅ Done | Starter file in game template |
-
-### Phase 13b — Rich Text ✅ Complete
-
-| Item | Status | Notes |
-|------|--------|-------|
-| `RichLabel` widget | ✅ Done | BBCode markup: `[b]`, `[i]`, `[color=#rrggbb]`, `[size=N]` |
-| `parse_markup()` | ✅ Done | Standalone parser — returns list of styled spans |
-| Font caching | ✅ Done | Per-instance font variant cache; no reallocation between frames |
-| Graceful degradation | ✅ Done | Unknown tags rendered as literal text, never crash |
+| Phase | Summary |
+|-------|---------|
+| Phase 11 — Game AI & Systems | A* pathfinding, animation state machine, positional audio, 2D lighting |
+| Phase 12 — Input & Controllers | Key remapping, controller/joystick, dead zones, haptic feedback, binding persistence |
+| Phase 13 — Theming & Rich Text | File-driven JSON theming, live hot-reload, RichLabel BBCode markup |
 
 ---
 
 ## Deliberately Skipped
 
-These were evaluated and will not be built into the engine.
-
 | Item | Decision | Reason |
 |------|----------|--------|
-| Built-in physics | Skip | Out of scope by accepted decision. Use pymunk as a game-level dependency. |
+| Built-in physics | Skip | Out of scope. Use pymunk as a game-level dependency. |
 | Networking / multiplayer | Skip | Highly game-specific; enormous scope. |
 | Scripting VM / Lua | Skip | Would double engine complexity for marginal benefit at this scale. |
 

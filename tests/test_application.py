@@ -394,3 +394,17 @@ def test_event_bus_cleared_on_shutdown() -> None:
 
     bus.emit("test.event")
     assert called == []   # handler was cleared
+
+# ── TimeManager (CHANGE-05) ───────────────────────────────────────────────────
+
+def test_time_raises_before_run() -> None:
+    """app.time must raise RuntimeError before run() is called."""
+    app = Application()
+    with pytest.raises(RuntimeError, match="before Application.run"):
+        _ = app.time
+
+
+def test_time_manager_not_created_at_construction() -> None:
+    """TimeManager is only created during _startup, not __init__."""
+    app = Application()
+    assert app._time_manager is None

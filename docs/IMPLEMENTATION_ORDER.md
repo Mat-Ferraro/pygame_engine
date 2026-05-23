@@ -1,5 +1,3 @@
----
-
 ## Purpose
 
 This document defines the sequence for all planned development work.
@@ -68,11 +66,11 @@ Extension hook system verified by loading a test module that uses hooks.
 
 | ID | Task | Blocks |
 |---|---|---|
-| CHANGE-05 | TimeManager class and `app.time` property | Editor play/stop, pause menus |
-| CHANGE-08 | Extension hooks on Application with priority | Editor attachment |
-| CHANGE-15 | `widget_id: str | None` field on Widget | Editor selection |
-| CHANGE-06 | FocusManager + `tab_index`, `focus_trap` on Widget | Accessibility, editor |
-| CHANGE-14 | Atomic writes in SaveManager | Data integrity |
+| CHANGE-05 | TimeManager class and `app.time` property | ✅ Complete |
+| CHANGE-08 | Extension hooks on Application with priority | ✅ Complete |
+| CHANGE-15 | `widget_id: str | None` field on Widget | ✅ Complete |
+| CHANGE-06 | GlobalFocusManager + `tab_index`, `focus_trap` on Widget | ✅ Complete |
+| CHANGE-14 | Atomic writes in SaveManager | ✅ Already implemented |
 
 **Why this order:**
 - CHANGE-05 and CHANGE-08 are independent and can be done in either order.

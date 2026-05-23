@@ -1,0 +1,46 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Type checking
+.mypy_cache/
+.pyright/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artefacts
+*.spec
+Release/
+Debug/
+
+# Python packaging (auto-generated — do not commit)
+*.egg-info/
+dist/
+build/
+__pycache__/
+*.pyc
+
+# Runtime artifacts from examples (do not commit)
+saves_example/
+crash.log
+*.bak
+
+# Scene editor runtime artifacts (per-developer — do not commit).
+# The editor regenerates these on exit; imgui.ini changes every session.
+# The in-repo default layout is the hardcoded DEFAULT_LAYOUT_INI in
+# editor/editor_app.py, so editor/imgui.ini is not needed in version control.
+editor/imgui.ini
+editor/editor_settings.json
+editor/editor_settings.bak

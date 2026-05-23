@@ -2,36 +2,51 @@
 Runtime audio management for pygame_engine.
 
 ``AudioManager`` handles all playback policy: volume, muting, music
-streaming, and sound effect playback. It does not load assets itself —
-sounds are loaded through ``app.assets`` and passed in as
-``pygame.mixer.Sound`` objects.
+streaming, and sound effect playback via an AudioBus topology.
 
 Owned by ``Application``, accessible via ``app.audio``.
 
-Architecture
+Bus topology
 ------------
-- Music (``pygame.mixer.music``) — one streamed track at a time.
-  Typically background music. Supports play, stop, pause, resume,
-  fade-out, and looping.
+Four built-in buses form a two-level hierarchy::
 
-- Sound effects (``pygame.mixer.Sound``) — short clips played on
-  mixer channels. Multiple effects can play simultaneously.
+    master
+    ├── music   (respects_time_scale=True  — pauses when game pauses)
+    ├── sfx     (respects_time_scale=True  — pauses when game pauses)
+    └── ui      (respects_time_scale=False — plays during game pause)
 
-Volume model
-------------
-Three independent volume levels, all in [0.0, 1.0]:
+Effective volume for any bus = product of its own volume and all parent
+volumes, zeroed if any bus in the chain is muted or paused by time_scale.
 
-    effective_music_sfx_volume = master * music/sfx * (0 if muted)
+Observable properties
+---------------------
+``bus.volume`` and ``bus.muted`` are ``Observable`` — settings UI can
+subscribe directly::
 
-``muted`` silences everything without destroying volume settings.
+    app.audio.music.volume.subscribe(lambda old, new: slider.set_value(new))
+    app.audio.sfx.muted.subscribe(lambda old, new: btn.update(new))
+
+Backward compatibility
+----------------------
+The flat API (``master_volume``, ``music_volume``, ``sfx_volume``,
+``muted``, ``toggle_mute``) is fully preserved as property shims that
+delegate to the bus topology. Existing code requires no changes.
 
 Usage::
 
-    # Via Application (preferred)
-    app.audio.play_music("music/theme.ogg")        # path via app.assets
-    app.audio.play_sfx(app.assets.sound("click.wav"))
+    # Bus API (preferred for new code)
+    app.audio.music.set_volume(0.7)
+    app.audio.sfx.muted.value = True
+    app.audio.ui.set_volume(0.9)
+
+    # Legacy flat API (still works)
     app.audio.master_volume = 0.8
     app.audio.muted = True
+
+    # Playback
+    app.audio.play_music("music/theme.ogg")
+    app.audio.play_sfx(app.assets.sound("click.wav"))
+    app.audio.play_sfx(app.assets.sound("ui_click.wav"), bus="ui")
 """
 
 from __future__ import annotations
@@ -41,44 +56,152 @@ from pathlib import Path
 
 import pygame
 
+from pygame_engine.audio.audio_bus import AudioBus
+
 
 class AudioManager:
     """
-    Runtime audio controller for pygame_engine.
+    Runtime audio controller with bus topology.
 
-    Handles music streaming and sound effect playback with independent
-    volume controls and a global mute flag.
+    Built-in buses: ``master``, ``music``, ``sfx``, ``ui``.
+    Use ``create_bus(name, parent)`` for additional buses.
+
+    The flat volume/mute API from the previous version is preserved as
+    property shims for backward compatibility.
     """
 
     def __init__(self) -> None:
-        self._master_volume: float = 1.0
-        self._music_volume:  float = 1.0
-        self._sfx_volume:    float = 1.0
-        self._muted:         bool  = False
+        # ── Bus topology ──────────────────────────────────────────────────────
+        self.master = AudioBus("master", respects_time_scale=False)
+        """
+        Root bus. Volume and mute here affect ALL other buses.
 
-        self._music_path:    str | None = None   # currently loaded track
-        self._music_paused:  bool       = False
+        ``respects_time_scale=False`` — the master itself is never silenced
+        by time_scale; individual child buses apply that policy.
+        """
+
+        self.music = AudioBus("music", respects_time_scale=True)
+        """Music bus. Pauses when ``time_scale`` is 0."""
+
+        self.sfx = AudioBus("sfx", respects_time_scale=True)
+        """Sound effects bus. Pauses when ``time_scale`` is 0."""
+
+        self.ui = AudioBus("ui", respects_time_scale=False)
+        """
+        UI sounds bus. Never pauses — menu sounds work during game pause.
+        """
+
+        # Wire parent chain
+        self.music._parent = self.master
+        self.sfx._parent   = self.master
+        self.ui._parent    = self.master
+
+        # Named registry (includes built-ins)
+        self._buses: dict[str, AudioBus] = {
+            "master": self.master,
+            "music":  self.music,
+            "sfx":    self.sfx,
+            "ui":     self.ui,
+        }
+
+        # ── Music state ───────────────────────────────────────────────────────
+        self._music_path:   str | None = None
+        self._music_paused: bool       = False
+
+    # ── Bus management ────────────────────────────────────────────────────────
+
+    def create_bus(
+        self,
+        name:   str,
+        parent: AudioBus | None = None,
+    ) -> AudioBus:
+        """
+        Create and register a custom audio bus.
+
+        Args:
+            name:   Unique identifier for the bus.
+            parent: Parent bus. Defaults to ``master`` if None.
+
+        Returns:
+            The newly created ``AudioBus``.
+
+        Raises:
+            ValueError: If a bus with ``name`` already exists.
+        """
+        if name in self._buses:
+            raise ValueError(
+                f"AudioBus {name!r} already exists. "
+                f"Use get_bus({name!r}) to retrieve it."
+            )
+        bus = AudioBus(name)
+        bus._parent = parent if parent is not None else self.master
+        self._buses[name] = bus
+        return bus
+
+    def get_bus(self, name: str) -> AudioBus:
+        """
+        Return a registered bus by name.
+
+        Args:
+            name: The bus identifier.
+
+        Raises:
+            KeyError: If no bus with ``name`` is registered.
+        """
+        try:
+            return self._buses[name]
+        except KeyError:
+            raise KeyError(
+                f"No AudioBus named {name!r}. "
+                f"Available: {sorted(self._buses)}"
+            )
+
+    # ── Time-scale integration ────────────────────────────────────────────────
+
+    def update(self, time_scale: float) -> None:
+        """
+        Apply time-scale policy to all buses.
+
+        Call once per frame from ``Application._loop()`` with the current
+        ``time_scale`` value. Buses with ``respects_time_scale=True`` are
+        silenced when ``time_scale`` is 0.
+
+        Args:
+            time_scale: Current time scale (0.0 = paused, 1.0 = normal).
+        """
+        paused = time_scale == 0.0
+        for bus in self._buses.values():
+            bus._apply_time_scale(time_scale)
+
+        # Reflect time-scale pause in pygame mixer music
+        if self.music.respects_time_scale:
+            if paused and self._music_paused is False:
+                if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
+                    pygame.mixer.music.pause()
+                    # Track that WE paused it (not the user)
+                    self._time_paused_music = True
+            elif not paused and getattr(self, "_time_paused_music", False):
+                if pygame.mixer.get_init():
+                    pygame.mixer.music.unpause()
+                self._time_paused_music = False
 
     # ── Music ─────────────────────────────────────────────────────────────────
 
     def play_music(
         self,
-        path: str | Path,
-        loops: int = -1,
+        path:       str | Path,
+        loops:      int = -1,
         fade_in_ms: int = 0,
     ) -> None:
         """
-        Load and play a music track.
+        Load and play a music track on the music bus.
 
         Stops any currently playing music before starting the new track.
         Music is streamed from disk — it is not loaded into memory.
 
         Args:
-            path:       Absolute or relative path to the music file.
-                        Pass the result of ``app.assets.asset_root / ...``
-                        or resolve it through ``PathResolver``.
-            loops:      Number of additional loops after the first play.
-                        -1 = loop forever (default).
+            path:       Path to the music file.
+            loops:      Additional loops after first play. -1 = loop forever.
             fade_in_ms: Fade-in duration in milliseconds. 0 = instant.
         """
         if not pygame.mixer.get_init():
@@ -90,7 +213,7 @@ class AudioManager:
             pygame.mixer.music.load(path_str)
             self._music_path   = path_str
             self._music_paused = False
-            pygame.mixer.music.set_volume(self._effective_music_volume)
+            pygame.mixer.music.set_volume(self.music.effective_volume)
             pygame.mixer.music.play(loops=loops, fade_ms=fade_in_ms)
         except pygame.error as exc:
             warnings.warn(f"AudioManager: failed to load music '{path}': {exc}")
@@ -134,85 +257,82 @@ class AudioManager:
 
     def play_sfx(
         self,
-        sound: pygame.mixer.Sound | None,
+        sound:  pygame.mixer.Sound | None,
         volume: float = 1.0,
-        loops: int = 0,
+        loops:  int   = 0,
+        bus:    str   = "sfx",
     ) -> pygame.mixer.Channel | None:
         """
-        Play a sound effect on an available mixer channel.
+        Play a sound effect through the named bus.
 
         Args:
             sound:  A ``pygame.mixer.Sound`` from ``app.assets.sound()``.
                     If None (missing asset), this is a safe no-op.
-            volume: Per-call volume multiplier in [0.0, 1.0]. Combined
-                    with the global SFX and master volumes.
+            volume: Per-call volume multiplier in [0.0, 1.0].
             loops:  Additional loops after first play. 0 = play once.
+            bus:    Bus name to route through. Default ``"sfx"``.
+                    Use ``"ui"`` for interface sounds that must play
+                    during game pause.
 
         Returns:
-            The ``pygame.mixer.Channel`` the sound is playing on,
-            or None if the sound could not be played.
+            The mixer channel, or None if the sound could not be played.
         """
         if sound is None:
             return None
         if not pygame.mixer.get_init():
             return None
 
-        effective = self._effective_sfx_volume * max(0.0, min(1.0, volume))
+        audio_bus  = self._buses.get(bus, self.sfx)
+        effective  = audio_bus.effective_volume * max(0.0, min(1.0, volume))
         sound.set_volume(effective)
-        channel = sound.play(loops=loops)
-        return channel
+        return sound.play(loops=loops)
 
-    # ── Volume ────────────────────────────────────────────────────────────────
+    # ── Backward-compatible flat API ──────────────────────────────────────────
 
     @property
     def master_volume(self) -> float:
-        """Master volume in [0.0, 1.0]. Scales all audio."""
-        return self._master_volume
+        """Master volume in [0.0, 1.0]. Delegates to ``master`` bus."""
+        return self.master.volume.value
 
     @master_volume.setter
     def master_volume(self, value: float) -> None:
-        """Return the current master volume in the range 0.0–1.0."""
-        self._master_volume = max(0.0, min(1.0, value))
+        self.master.set_volume(value)
         self._apply_music_volume()
 
     @property
     def music_volume(self) -> float:
-        """Music volume in [0.0, 1.0]."""
-        return self._music_volume
+        """Music volume in [0.0, 1.0]. Delegates to ``music`` bus."""
+        return self.music.volume.value
 
     @music_volume.setter
     def music_volume(self, value: float) -> None:
-        """Return the current music volume in the range 0.0–1.0."""
-        self._music_volume = max(0.0, min(1.0, value))
+        self.music.set_volume(value)
         self._apply_music_volume()
 
     @property
     def sfx_volume(self) -> float:
-        """Sound effect volume in [0.0, 1.0]."""
-        return self._sfx_volume
+        """SFX volume in [0.0, 1.0]. Delegates to ``sfx`` bus."""
+        return self.sfx.volume.value
 
     @sfx_volume.setter
     def sfx_volume(self, value: float) -> None:
-        """Return the current SFX volume in the range 0.0–1.0."""
-        self._sfx_volume = max(0.0, min(1.0, value))
-
-    # ── Mute ──────────────────────────────────────────────────────────────────
+        self.sfx.set_volume(value)
 
     @property
     def muted(self) -> bool:
-        """When True, all audio is silenced without losing volume settings."""
-        return self._muted
+        """Global mute. Delegates to ``master`` bus muted flag."""
+        return self.master.muted.value
 
     @muted.setter
     def muted(self, value: bool) -> None:
-        """Return True if the audio manager is currently muted."""
-        self._muted = value
+        self.master.muted.value = value
         self._apply_music_volume()
 
     def toggle_mute(self) -> bool:
-        """Toggle mute state and return the new state."""
-        self.muted = not self._muted
-        return self._muted
+        """Toggle master mute and return the new state."""
+        new_state = self.master.toggle_mute()
+        self._apply_music_volume()
+        return new_state
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
 
@@ -230,17 +350,15 @@ class AudioManager:
 
     @property
     def _effective_music_volume(self) -> float:
-        if self._muted:
-            return 0.0
-        return self._master_volume * self._music_volume
+        """Backward-compat: effective volume via bus chain."""
+        return self.music.effective_volume
 
     @property
     def _effective_sfx_volume(self) -> float:
-        if self._muted:
-            return 0.0
-        return self._master_volume * self._sfx_volume
+        """Backward-compat: effective volume via bus chain."""
+        return self.sfx.effective_volume
 
     def _apply_music_volume(self) -> None:
-        """Apply the current effective music volume to the mixer."""
+        """Apply current effective music volume to pygame mixer."""
         if pygame.mixer.get_init():
-            pygame.mixer.music.set_volume(self._effective_music_volume)
+            pygame.mixer.music.set_volume(self.music.effective_volume)

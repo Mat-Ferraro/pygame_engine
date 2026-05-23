@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 import pygame
 
 from pygame_engine.graphics.surfaces import blit_alpha_surface, make_alpha_surface
+from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 
 
@@ -161,7 +162,7 @@ class Tooltip(Widget):
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _build_font(self) -> None:
-        theme = ctx.theme
+        theme = get_theme()
         self._font = pygame.font.SysFont(
             theme.typography.family,
             theme.typography.xs,
@@ -173,7 +174,7 @@ class Tooltip(Widget):
         if self._font is None:
             return
 
-        theme = ctx.theme
+        theme = get_theme()
         self._text_surf = self._font.render(
             self._text, True, theme.colours.text
         )

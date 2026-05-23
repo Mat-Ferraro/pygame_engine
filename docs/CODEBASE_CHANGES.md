@@ -1,5 +1,3 @@
----
-
 ## Priority 1 -- Must Change Before New Features
 
 ### C1 — Theme Singleton Must Move to Application ✅ RESOLVED (CHANGE-02)
@@ -287,3 +285,45 @@ Do in this order:
 3. C2, C3 (Game UI extraction, ConfirmDialog) -- independent, can be parallel
 4. C4, C5, C6, C7 (Decomposition and registry) -- when editor build begins
 5. C9, C10, C11, C12, C13 -- ongoing cleanup, no ordering dependency
+
+---
+
+## Phase B — Complete ✅
+
+All five Phase B tasks are done. Summary of what was implemented:
+
+### CHANGE-15 — `widget_id` on Widget
+`Widget.__init__` gains `self.widget_id: str | None = None`. Used by editor
+tooling and test helpers to locate widgets by name without relying on type
+or positional index. No engine behaviour changes.
+
+### CHANGE-05 — TimeManager
+New `pygame_engine/app/time_manager.py`. `TimeManager` owns `time_scale:
+Observable[float]`, `delta_time`, `unscaled_delta_time`, `time`,
+`unscaled_time`, `frame_count`, `max_delta_time`, `advance(raw_dt)`,
+`register_fixed_step(callback, rate)`, and `reset()`. Application creates
+one in `_startup`, advances it each frame before `scene_manager.update()`,
+and exposes it via `app.time`. Scenes receive scaled `delta_time` — pausing
+is `app.time.time_scale.value = 0.0`.
+
+### CHANGE-08 — Extension hooks
+`Application` gains `add_hook(name, callback, priority=0)`,
+`remove_hook(name, callback)`, and `_fire_hook(name, *args)`. Six hook
+points: `startup`, `shutdown`, `pre_update`, `post_update`, `pre_render`,
+`post_render`. Stored as sorted `(priority, counter, callable)` triples;
+higher priority runs later. Enables optional modules to attach without
+subclassing Application.
+
+### CHANGE-06 — GlobalFocusManager + Widget fields
+New `pygame_engine/ui/global_focus.py`. `GlobalFocusManager` tracks the
+globally focused widget, provides `set_focus`, `clear_focus`, `next_focus`,
+`prev_focus`, `set_candidates`, and `render_focus_ring(surface)` as a
+post-render pass. Emits `ui.focus.changed` on the event bus. Exposed via
+`app.focus` (available before `run()`). Widget gains `tab_index: int | None`
+and `focus_trap: bool`. The existing container-local `FocusManager` mixin in
+`pygame_engine/ui/focus.py` is unchanged.
+
+### CHANGE-14 — Atomic writes in SaveManager ✅ Already implemented
+`pygame_engine/persistence/storage.py` `write()` already uses atomic
+write-to-`.tmp`-then-rename with `.bak` backup. No code changes needed.
+Task verified complete; docs updated to reflect this.

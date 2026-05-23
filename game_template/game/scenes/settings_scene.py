@@ -2,6 +2,12 @@
 game/scenes/settings_scene.py
 
 Settings scene — pushed on top of the main menu or pause menu.
+
+NOTE (decision #25): This scene predates the descriptor-authority
+decision and is still a plain `Scene`. It has structural UI and is
+a reasonable candidate to migrate to `DescribedScene` — see
+docs/SCENE_AUTHORING_GUIDE.md. Not yet migrated; tracked in the
+docs/sprints/SPRINT_descriptor_authority.md closeout.
 """
 
 from __future__ import annotations

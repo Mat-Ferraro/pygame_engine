@@ -1,7 +1,8 @@
 # pygame_engine — Scene Authoring Guide
 
 **Version:** 2.0-design
-**Authority:** Practical supplement to ARCHITECTURE.md
+**Authority:** Practical supplement to ARCHITECTURE.md. Reflects
+accepted decision #25 (Scene Descriptor Is the Source of Truth for UI Layout).
 
 This guide covers how to write a scene in pygame_engine. It bridges the
 gap between understanding the architecture and actually writing a scene
@@ -14,22 +15,37 @@ developers writing game scenes.
 
 ## 1. Choosing a Base Class
 
-### Use `Scene` when:
-- The scene has no layout that the editor needs to manage
-- The scene is a simple overlay (pause menu, settings, dialog)
-- You want zero editor dependency
+Two base classes, for two kinds of scene.
 
-### Use `DescribedScene` when:
-- The scene has a structural layout — panels, headers, buttons — that
-  you want to edit visually
-- The scene will be opened in the scene editor
-- You want bidirectional sync between code and editor
+### `DescribedScene` — the default for scenes with a UI
 
-**When in doubt, start with `Scene`.** `DescribedScene` can be adopted
-later — it is a subclass of `Scene` and the migration is additive.
+Use `DescribedScene` for any scene with a structural layout of engine
+widgets — panels, buttons, labels, inputs. The scene declares its UI as a
+`SceneDescriptor` (a tree of widget nodes); the engine builds the real
+widget tree from it. This is the path that the scene editor understands,
+and per decision #25 it is the source of truth for the scene's layout.
+
+Choose `DescribedScene` when:
+- The scene is built from engine widgets (`Panel`, `Button`, `Label`, …).
+- You want the layout to be editable in the scene editor.
+- You want the layout to persist to / load from a `.layout.json` file.
+
+### `Scene` — for custom-rendered or trivial scenes
+
+Use the plain `Scene` base class when a descriptor would not help:
+- The scene draws itself with custom `pygame.draw` calls rather than
+  composing engine widgets (the skeleton in section 2 is such a scene).
+- The scene is a trivial overlay with little or no layout.
+- You have a deliberate reason to want zero descriptor involvement.
+
+Both share the same lifecycle and frame methods (sections 3–11 apply to
+both). `DescribedScene` is a subclass of `Scene` — it adds descriptor
+authoring on top, it does not change the fundamentals.
+
+**Rule of thumb:** a scene made of engine widgets is a `DescribedScene`;
+a scene that paints its own pixels is a `Scene`.
 
 ---
-
 ## 2. The Scene Skeleton
 
 Every scene follows this structure. The order of methods is consistent
@@ -341,50 +357,100 @@ self._action_btns = []          # rebuilt every frame in render
 
 ---
 
-## 4. on_enter vs _build_layout
+
+---
+
+## 4. Lifecycle: `on_enter`, `_build_layout`, `_bind_behavior`
+
+This section differs by base class — read the part that applies.
+
+### Plain `Scene`
 
 `on_enter()` is called once when the scene becomes active. It is the
-right place for setup that depends on the screen size or game state.
-
-`_build_layout()` is a convention, not a required method. Call it from
-`on_enter()` to separate layout logic from other setup:
+right place for setup that depends on screen size or game state. A
+`_build_layout()` helper is a useful *convention* for separating rect
+computation from other setup — you define it and call it yourself:
 
 ```python
 def on_enter(self) -> None:
-    self._build_layout()       # compute panel rects
-    self._tab_bar = TabBar(...)  # create tab bar
-    # subscribe to observables here (via self.subscriptions if using DescribedScene)
+    self._build_layout()        # compute panel rects
+    self._tab_bar = TabBar(...) # create supporting objects
 ```
 
-`_build_layout()` should only compute rects. It must not:
-- Subscribe to observables
-- Load assets
-- Modify game state
-- Have any side effects beyond storing computed rects on `self`
+For a plain `Scene`, `_build_layout()` is your own method with no
+special meaning to the engine — keep it side-effect free (compute and
+store rects, nothing more).
+
+### `DescribedScene`
+
+For a `DescribedScene`, `_build_layout()` is **not** a convention — it is
+a required override with a defined contract, and the engine calls it for
+you. Do **not** call it yourself from `on_enter()`.
+
+`DescribedScene.on_enter()` runs this chain automatically:
+
+1. `_build_layout()` — you populate `self.layout` (the descriptor).
+2. The engine's `LayoutLoader` builds the real widget tree from it.
+3. `root_widget` is assigned — the base `Scene` then renders and routes
+   to it for free.
+4. `_bind_behavior()` — you attach callbacks to widgets by `widget_id`.
+
+So a `DescribedScene` overrides `_build_layout()` and (usually)
+`_bind_behavior()`, and typically does **not** override `on_enter()` at
+all. If you do override `on_enter()`, call `super().on_enter()`.
+
+`_build_layout()` must:
+- Populate `self.layout` using the `layout_builder` DSL
+  (`with self.layout.builder() as L: ...`) or
+  `self.layout.load_or_default(self.layout_path, ...)`.
+- Compute geometry against `self.screen_rect` (set for you before
+  `on_enter()` runs).
+- Be **re-runnable** — it is called again on every `on_resize()`. The
+  base class clears the descriptor before each call, so just populate a
+  fresh tree; do not assume it runs only once.
+
+`_build_layout()` must **not**:
+- Store callables on the descriptor — the descriptor is data only.
+- Attach behaviour — that is `_bind_behavior()`'s job.
+- Subscribe to observables, load assets, or modify game state.
+
+Behaviour — `on_click` handlers, navigation — goes in `_bind_behavior()`,
+which runs after the widgets exist:
+
+```python
+def _bind_behavior(self) -> None:
+    self.widget("play_btn").on_click = self._on_play
+```
+
+`self.widget(id)` returns the built widget (raises if the id is unknown);
+`self.find_widget(id)` returns `None` instead of raising.
 
 ---
 
 ## 5. on_exit — What Not to Put Here
 
-`on_exit()` is called when the scene is popped. For most scenes,
-the only thing required is `super().on_exit()`:
+`on_exit()` is called when the scene is popped. For most scenes the only
+thing required is `super().on_exit()`:
 
 ```python
 def on_exit(self) -> None:
-    super().on_exit()   # disposes self.subscriptions if using DescribedScene
+    super().on_exit()
 ```
 
-**Do not put** scene navigation here. Navigation happens in response
-to user input, not on exit.
+`super().on_exit()` disposes `self.subscriptions` automatically. The
+`subscriptions` group lives on the base `Scene` class — it is available
+to every scene, plain `Scene` and `DescribedScene` alike. A
+`DescribedScene` additionally releases its layout's live rect bindings
+in `super().on_exit()`.
+
+**Do not put** scene navigation here. Navigation happens in response to
+user input, not on exit.
 
 **Do not put** game state saves here. Save explicitly when the action
 that requires saving occurs — not as a side effect of exiting a scene.
 
-**Do not put** manual unsubscription here if using `DescribedScene` —
-the `SubscriptionGroup` handles that automatically.
-
----
-
+**Do not** manually unsubscribe observables you registered through
+`self.subscriptions` — the group handles that for you.
 ## 6. Events — The Routing Order
 
 Event routing in `_handle_event_scene` follows a strict order:
@@ -555,43 +621,102 @@ arbitrary point during scene teardown.
 
 ---
 
-## 12. DescribedScene — When to Migrate
 
-A plain `Scene` becomes a `DescribedScene` when:
-- You want to edit its layout in the scene editor
-- You want to define `editor_context()` for design-time data
-- You want automatic subscription cleanup via `self.subscriptions`
+---
 
-Migration is additive — change the base class and add the methods:
+## 12. Writing a DescribedScene
+
+A `DescribedScene` declares its UI as data and lets the engine build the
+widget tree. The pattern has three parts: `_build_layout()` declares
+structure and geometry, `_bind_behavior()` attaches behaviour, and the
+engine does the rest.
+
+### The shape
 
 ```python
-# Before
-class ManagementScene(Scene):
-    def on_enter(self) -> None:
-        self._build_layout()
+from pygame_engine.scene.described_scene import DescribedScene
+from pygame_engine.scene import layout_builder  # noqa: F401  (patches builder())
+from pygame_engine.layout import anchor, column
 
-# After
-class ManagementScene(DescribedScene):
-    @classmethod
-    def editor_context(cls) -> dict:
-        return {
-            "gold": 500,
-            "roster": [],
-            "available_recruits": [MockHero("Alice"), MockHero("Bob")],
-        }
 
-    def on_enter(self) -> None:
-        self._build_layout()   # still called — populates descriptor
-        self._tab_bar = TabBar(...)
+class MainMenuScene(DescribedScene):
+    """Main menu — Start / Settings / Quit."""
+
+    def __init__(self, app) -> None:
+        super().__init__()
+        self._app = app
+
+    # ── Layout — structure and geometry only ─────────────────────────────
 
     def _build_layout(self) -> None:
-        with self.layout() as L:
-            L.panel("recruits_panel", x=8, y=64, w=620, h=760)
-            L.panel("roster_panel",   x=640, y=64, w=400, h=760)
-            L.dynamic("recruit_rows", parent="recruits_panel",
-                      placeholder_count=5, placeholder_height=72)
+        screen = self.screen_rect
+        panel  = anchor(screen, (280, 240), "center")
+        rects  = column(panel, count=3, item_size=(200, 52), spacing=14)
+
+        with self.layout.builder() as L:
+            L.stack("root", x=0, y=0, w=screen.w, h=screen.h)
+            L.panel("menu_panel",
+                    x=panel.x, y=panel.y, w=panel.w, h=panel.h,
+                    parent="root")
+            L.button("start_btn",
+                     x=rects[0].x, y=rects[0].y, w=rects[0].w, h=rects[0].h,
+                     parent="menu_panel", label="Start")
+            L.button("settings_btn",
+                     x=rects[1].x, y=rects[1].y, w=rects[1].w, h=rects[1].h,
+                     parent="menu_panel", label="Settings")
+            L.button("quit_btn",
+                     x=rects[2].x, y=rects[2].y, w=rects[2].w, h=rects[2].h,
+                     parent="menu_panel", label="Quit")
+
+    # ── Behaviour — attached after the widgets exist ─────────────────────
+
+    def _bind_behavior(self) -> None:
+        self.widget("start_btn").on_click    = self._on_start
+        self.widget("settings_btn").on_click = self._on_settings
+        self.widget("quit_btn").on_click     = self._on_quit
 ```
 
-`self.subscriptions` is available automatically in `DescribedScene`.
-Subscriptions registered through it are cancelled when the scene exits.
-No manual unsubscription needed.
+The scene constructs **no widget directly**. It describes a tree; the
+engine's `LayoutLoader` realises it. `MainMenuScene` in `game_template`
+is the live reference for this pattern.
+
+### Geometry: compute, then store literals
+
+Layout helpers (`anchor`, `column`, `flex`) are computed inside
+`_build_layout()` and their **results** — literal `x/y/w/h` numbers — are
+stored on the descriptor nodes. The descriptor stays a flat data model.
+
+Because `_build_layout()` re-runs on `on_resize()` and recomputes those
+helpers against the new `self.screen_rect`, the layout re-flows on a
+window resize for free.
+
+### The layout / behaviour split
+
+The descriptor must stay JSON-serialisable, so it stores **only**
+structure and geometry — no callables. A Button's `on_click` is not a
+layout property; it is behaviour. Behaviour is attached in
+`_bind_behavior()` by looking widgets up via `widget_id`. This split is
+what lets a layout round-trip through a `.layout.json` file unchanged.
+
+### The DSL and the widget registry
+
+`self.layout.builder()` yields a fluent builder with one method per
+built-in widget type: `L.stack()`, `L.panel()`, `L.button()`,
+`L.label()`, `L.input_field()`, `L.image()`, `L.dynamic()`. For a custom
+widget type, use the generic `L.node("MyType", ...)`.
+
+For `L.node("MyType", ...)` to work, `"MyType"` must be registered with
+the widget registry (`pygame_engine/ui/widget_registry.py`) — see
+`widget_contract.md`. An unregistered type fails loudly when the scene
+loads; it is never silently skipped.
+
+### editor_context — design-time data
+
+Override `editor_context()` to give the scene editor representative mock
+data, so the scene previews meaningfully without a running game:
+
+```python
+@classmethod
+def editor_context(cls) -> dict:
+    return {"gold": 500, "roster": []}
+```

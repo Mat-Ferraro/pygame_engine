@@ -25,6 +25,8 @@ EXAMPLES: list[tuple[str, str, str]] = [
     ("example_app",               "Application spine, Tween, animated widget, Timer",        "Core"),
     ("example_scene",             "Scene push / pop / replace, overlay blocking flags",       "Core"),
     ("example_transitions",       "Fade, Slide (4 dirs), Crossfade between scenes",           "Core"),
+    ("example_time_manager",      "TimeManager: pause, slow-mo, fast-forward, fixed-step",   "Core"),
+    ("example_hooks",             "Extension hooks: attach modules without subclassing",      "Core"),
     # UI
     ("example_buttons",           "Panel, Button, Label, disabled state",                     "UI"),
     ("example_widgets",           "Slider, Checkbox, RadioGroup, Dropdown",                   "UI"),
@@ -32,6 +34,7 @@ EXAMPLES: list[tuple[str, str, str]] = [
     ("example_scrollable",        "Scrollable container, TextBlock wrapping",                 "UI"),
     ("example_layout",            "anchor, row, column, grid helpers",                        "UI"),
     ("example_responsive_layout", "FlexRow, FlexColumn, AnchorLayout on resize",              "UI"),
+    ("example_focus",             "GlobalFocusManager: tab_index, focus_trap, focus ring",   "UI"),
     # Visuals
     ("example_particles",         "All 6 particle presets — click to spawn",                  "Visuals"),
     ("example_animation",         "Tween easings, AnimationPlayer, AnimationStateMachine",    "Visuals"),
@@ -40,13 +43,13 @@ EXAMPLES: list[tuple[str, str, str]] = [
     ("example_camera",            "Camera follow, zoom, shake, world bounds, culling",        "Game"),
     ("example_tilemap",           "Tileset, TileLayer, Tilemap collision queries",            "Game"),
     ("example_dialogue",          "DialogueScript, DialogueRunner, typewriter box",           "Game"),
-    ("example_platformer",         "2D platformer: A* enemies, lighting, positional audio, state machine", "Game"),
+    ("example_platformer",        "2D platformer: A* enemies, lighting, positional audio, state machine", "Game"),
     # Assets & data
     ("example_atlas_locale",      "SpriteAtlas packing, LocaleStore key lookup",              "Assets"),
     ("example_persistence",       "SaveManager save / load / delete / list slots",            "Assets"),
     # Input & audio
     ("example_input",             "Key remapping, controller detection, binding reset",       "Input"),
-    ("example_audio",             "AudioManager volume, mute, SFX (procedural tones)",       "Input"),
+    ("example_audio",             "AudioManager buses, volume, mute, SFX routing",           "Input"),
     # Debug
     ("example_debug",             "debug_log, RuntimeFlags, DebugOverlay (F1/F2/F3)",        "Debug"),
 ]
@@ -99,7 +102,6 @@ def main() -> None:
 
     if args:
         arg = args[0]
-        # Numeric
         try:
             n = int(arg)
             if 1 <= n <= len(EXAMPLES):
@@ -109,7 +111,6 @@ def main() -> None:
             sys.exit(1)
         except ValueError:
             pass
-        # Name match
         hits = _matches(arg)
         if len(hits) == 1:
             _run(hits[0])
@@ -137,7 +138,6 @@ def main() -> None:
         if choice in ("q", "0", "quit", "exit"):
             break
 
-        # Numeric choice
         try:
             n = int(choice)
             if 1 <= n <= len(EXAMPLES):
@@ -148,7 +148,6 @@ def main() -> None:
         except ValueError:
             pass
 
-        # Partial name match
         hits = _matches(choice)
         if len(hits) == 1:
             _run(hits[0])

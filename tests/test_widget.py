@@ -1,6 +1,4 @@
 """
-Tests for pygame_engine.ui.base.Widget.
-
 Covers: visibility/enabled guards, hovered updates, contains_point,
 set_rect, focusable attribute, is_interactive, focused default.
 """
@@ -145,3 +143,33 @@ def test_contains_point_false_outside() -> None:
 def test_focused_defaults_false() -> None:
     w = Widget(pygame.Rect(0, 0, 100, 40))
     assert w.focused is False
+
+# ── CHANGE-15: widget_id ──────────────────────────────────────────────────────
+
+def test_widget_id_default_is_none() -> None:
+    """widget_id defaults to None on every new Widget."""
+    w = Widget(pygame.Rect(0, 0, 100, 40))
+    assert w.widget_id is None
+
+
+def test_widget_id_can_be_set() -> None:
+    """widget_id can be assigned any string after construction."""
+    w = Widget(pygame.Rect(0, 0, 100, 40))
+    w.widget_id = "my_button"
+    assert w.widget_id == "my_button"
+
+
+def test_widget_id_survives_set_rect() -> None:
+    """set_rect must not clear widget_id."""
+    w = Widget(pygame.Rect(0, 0, 100, 40))
+    w.widget_id = "header_label"
+    w.set_rect(pygame.Rect(10, 10, 200, 50))
+    assert w.widget_id == "header_label"
+
+
+def test_widget_id_independent_per_instance() -> None:
+    """Two widgets never share a widget_id value by default."""
+    a = Widget(pygame.Rect(0, 0, 50, 50))
+    b = Widget(pygame.Rect(0, 0, 50, 50))
+    a.widget_id = "a"
+    assert b.widget_id is None

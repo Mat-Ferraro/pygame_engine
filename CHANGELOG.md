@@ -2,6 +2,100 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+
+## [Unreleased] — Phase B: Engine Infrastructure
+
+### Added
+
+**TimeManager (`pygame_engine/app/time_manager.py`)**
+- `TimeManager` class centralises all time values for a running application
+- `time_scale: Observable[float]` — set to `0.0` to pause, `0.5` for slow-mo
+- `delta_time` / `unscaled_delta_time` — scaled and raw frame time
+- `time` / `unscaled_time` — accumulated totals since startup
+- `frame_count` — total frames advanced
+- `max_delta_time` — clamp guard against spiral-of-death after hitches
+- `register_fixed_step(callback, rate)` — fire callbacks at a fixed Hz
+- `reset()` — clears accumulators without removing registrations
+- `app.time` property — raises `RuntimeError` before `run()` is called
+- `tests/test_time_manager.py` — 32 tests
+
+**Extension hooks (`Application.add_hook` / `remove_hook`)**
+- Six hook points: `startup`, `shutdown`, `pre_update`, `post_update`,
+  `pre_render`, `post_render`
+- `priority: int = 0` — higher priority fires later; equal priority fires
+  in registration order (stable sort via `bisect.insort`)
+- Enables optional modules to attach behaviour without subclassing `Application`
+- `tests/test_extension_hooks.py` — 20 tests
+
+**GlobalFocusManager (`pygame_engine/ui/global_focus.py`)**
+- `set_focus(widget)`, `clear_focus()`, `next_focus()`, `prev_focus()`
+- `set_candidates(widgets)` — filters to visible+enabled+focusable; sorts
+  `tab_index`-bearing widgets first (ascending), then document order
+- `render_focus_ring(surface)` — 2px ring drawn as post-render pass
+- Emits `ui.focus.changed` on the event bus on every focus change
+- `app.focus` property — available before `run()` (no pygame dependency)
+- `tests/test_global_focus.py` — 32 tests
+
+**Widget additions (CHANGE-15 + CHANGE-06)**
+- `Widget.widget_id: str | None` — optional string identifier for tooling
+- `Widget.tab_index: int | None` — explicit Tab order for GlobalFocusManager
+- `Widget.focus_trap: bool` — prevents Tab escaping a modal widget's subtree
+- `tests/test_widget.py` — widget_id tests added
+
+**AudioBus topology (`pygame_engine/audio/audio_bus.py`)**
+- `AudioBus` class with `volume: Observable[float]`, `muted: Observable[bool]`
+- `effective_volume` walks parent chain — zeroed if any ancestor is muted/paused
+- `respects_time_scale` — SFX/music buses pause at `time_scale=0`; UI bus does not
+- Four built-in buses on `AudioManager`: `master`, `music`, `sfx`, `ui`
+- `create_bus(name, parent)` for custom buses (cutscene, ambient, etc.)
+- `get_bus(name)` retrieves any registered bus
+- `AudioManager.update(time_scale)` propagates pause policy each frame
+- `play_sfx(..., bus="ui")` routes UI sounds through the UI bus
+- All existing flat API (`master_volume`, `music_volume`, `sfx_volume`,
+  `muted`, `toggle_mute`) preserved as backward-compatible shims
+- `tests/test_audio_bus.py` — 57 tests
+
+**RenderContext (`pygame_engine/app/render_context.py`)**
+- Frozen dataclass carrying per-frame theme snapshot
+- Threaded through all `render(surface, ctx)` calls — replaces the global
+  `get_theme()` singleton in render paths
+- `ctx.theme` valid only inside render paths where ctx is passed explicitly
+
+### Changed
+- `Application._loop()` — TimeManager advance before scene update; focus ring
+  rendered after scene, before debug overlays; extension hooks fire at correct
+  frame positions
+- `AudioManager` — refactored to delegate volume/mute to bus topology;
+  flat properties now shim through buses
+- `Widget.render(surface)` → `Widget.render(surface, ctx)` — all widgets
+  updated for RenderContext threading
+
+### Fixed
+- `ui/feedback/toast.py` — `_build_font()`, `_resolve_bg_colour()`,
+  `_resolve_accent_colour()`, `_rebuild_surfaces()` called `ctx.theme` with no
+  `ctx` in scope; fixed to `get_theme()`
+- `ui/feedback/tooltip.py` — same fix as toast.py
+
+### Tests added
+- `tests/test_audio.py` — 38 tests (AudioManager full coverage)
+- `tests/test_audio_bus.py` — 57 tests (AudioBus + bus topology)
+- `tests/test_draw_utils.py` — 15 tests
+- `tests/test_surfaces.py` — 19 tests
+- `tests/test_signals.py` — 14 tests
+- `tests/test_toast.py` — 27 tests
+- `tests/test_tooltip.py` — 19 tests
+- `tests/test_time_manager.py` — 32 tests
+- `tests/test_extension_hooks.py` — 20 tests
+- `tests/test_global_focus.py` — 32 tests
+
+### Examples added
+- `examples/example_time_manager.py` — pause, slow-mo, speed-up, fixed-step demo
+- `examples/example_hooks.py` — extension hook system demo
+- `examples/example_focus.py` — GlobalFocusManager keyboard navigation demo
+
+---
+
+
 ## [Unreleased] — Phase A: CHANGE-01 + CHANGE-07
 
 ### Added

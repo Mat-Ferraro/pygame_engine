@@ -1,6 +1,4 @@
 """
-Base widget contract for pygame_engine.
-
 Every UI element in the engine subclasses Widget. This base class provides
 the minimal shared contract: rect, interaction state, and the three frame
 methods. It does NOT manage children — that belongs to container widgets.
@@ -49,7 +47,9 @@ class Widget:
 
     Provides:
     - rect (position and size)
-    - interaction state (visible, enabled, hovered, focused)
+    - widget_id (optional string identifier for editor/tooling lookup)
+    - interaction state (visible, enabled, hovered, focused, focusable)
+    - focus ordering (tab_index) and focus trapping (focus_trap)
     - the three frame methods (handle_event, update, render)
     - hit-testing helpers
 
@@ -68,8 +68,8 @@ class Widget:
     - ``hovered`` is maintained automatically in ``handle_event`` by checking
       MOUSEMOTION events against the widget rect. Subclasses do not need to
       manage this manually.
-    - ``focused`` is set externally by a container or scene managing focus
-      traversal. The base widget does not implement focus traversal itself.
+    - ``focused`` is set externally by a container or the global FocusManager.
+      The base widget does not implement focus traversal itself.
 
     Subclassing
     -----------
@@ -88,6 +88,20 @@ class Widget:
                   mutations to the rect object are reflected immediately.
         """
         self.rect: pygame.Rect = rect
+
+        self.widget_id: str | None = None
+        """
+        Optional string identifier for this widget.
+
+        Used by editor tooling and automated tests to locate a specific widget
+        within a tree without relying on positional index or type. Not used by
+        the engine itself during normal rendering or event routing.
+
+        Set this on widgets that need to be discoverable::
+
+            my_button = Button(rect, "OK")
+            my_button.widget_id = "confirm_btn"
+        """
 
         # ── Interaction state ─────────────────────────────────────────────────
         self.visible: bool = True
@@ -111,7 +125,7 @@ class Widget:
         self.focused: bool = False
         """
         True when this widget has keyboard focus.
-        Set externally by a container or scene; not managed internally.
+        Set externally by a container or the global FocusManager.
         """
 
         self.focusable: bool = False
@@ -120,6 +134,31 @@ class Widget:
         Interactive widgets (Button, InputField) default to True.
         Display widgets (Label, TextBlock, ProgressBar) default to False.
         Set on each subclass, or override per-instance.
+        """
+
+        self.tab_index: int | None = None
+        """
+        Optional explicit Tab ordering for the global FocusManager.
+
+        ``None`` means the widget participates in document order (the order
+        it appears in the widget tree). An integer value overrides this order
+        — lower values are focused first among widgets with a ``tab_index``
+        set; widgets with ``tab_index=None`` follow after.
+
+        Only meaningful when ``focusable`` is True.  Ignored by the
+        container-local FocusManager mixin (Panel/Stack) which always uses
+        document order.
+        """
+
+        self.focus_trap: bool = False
+        """
+        When True, Tab key navigation never escapes this widget.
+
+        Used by modal overlays such as ``ConfirmDialog`` to prevent focus
+        from leaving the dialog while it is active.  The global FocusManager
+        respects this flag; the container-local mixin does not.
+
+        Only meaningful on container-like widgets that own focusable children.
         """
 
     # ── Convenience ───────────────────────────────────────────────────────────
@@ -145,12 +184,6 @@ class Widget:
         - returns False immediately if the widget is not enabled
           (after updating hover state, which should still track)
 
-        Hover is updated before the enabled check so that a disabled widget
-        still shows correct hover state visually (e.g. a not-allowed cursor).
-
-        Subclasses override ``_handle_event_widget`` rather than this method
-        to keep the guards intact.
-
         Args:
             event: A raw pygame event.
 
@@ -160,7 +193,6 @@ class Widget:
         if not self.visible:
             return False
 
-        # Update hover state regardless of enabled status.
         if event.type == pygame.MOUSEMOTION:
             self.hovered = self.rect.collidepoint(event.pos)
 
@@ -189,8 +221,6 @@ class Widget:
         Advance widget state by one frame.
 
         Not called when ``visible`` is False.
-
-        Override to drive animations, timers, or state transitions.
         The base implementation is a no-op.
 
         Args:
@@ -202,12 +232,11 @@ class Widget:
         Draw the widget onto the provided surface.
 
         Not called (and returns immediately) when ``visible`` is False.
-        Override to draw widget content.
-
         The base implementation draws nothing.
 
         Args:
             surface: The surface to draw onto.
+            ctx:     The render context carrying per-frame theme and state.
         """
 
     # ── Layout ────────────────────────────────────────────────────────────────
@@ -215,10 +244,6 @@ class Widget:
     def set_rect(self, rect: pygame.Rect) -> None:
         """
         Assign a new rect to this widget.
-
-        Called by layout helpers to position widgets. Replacing the rect
-        rather than mutating it in-place ensures subclasses that cache
-        derived values can override this method to invalidate those caches.
 
         Args:
             rect: The new position and size.

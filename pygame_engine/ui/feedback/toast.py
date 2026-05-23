@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 import pygame
 
 from pygame_engine.graphics.surfaces import blit_alpha_surface, make_alpha_surface
+from pygame_engine.theme.runtime import get_theme
 from pygame_engine.ui.base.widget import Widget
 from pygame_engine.utils.timers import Timer
 
@@ -201,7 +202,7 @@ class Toast(Widget):
         self._phase_timer = Timer(durations.get(phase, 0.0), auto_start=True)
 
     def _build_font(self) -> None:
-        theme = ctx.theme
+        theme = get_theme()
         self._font = pygame.font.SysFont(
             theme.typography.family,
             theme.typography.sm,
@@ -209,7 +210,7 @@ class Toast(Widget):
         self._dirty = True
 
     def _resolve_bg_colour(self) -> tuple[int, int, int]:
-        theme = ctx.theme
+        theme = get_theme()
         return {
             "success": theme.colours.bg_raised,
             "warning": theme.colours.bg_raised,
@@ -217,7 +218,7 @@ class Toast(Widget):
         }.get(self._kind, theme.colours.bg_raised)
 
     def _resolve_accent_colour(self) -> tuple[int, int, int]:
-        theme = ctx.theme
+        theme = get_theme()
         return {
             "success": (60,  170, 100),
             "warning": (210, 150,  40),
@@ -228,7 +229,7 @@ class Toast(Widget):
         if self._font is None:
             return
 
-        theme = ctx.theme
+        theme = get_theme()
         self._text_surf = self._font.render(
             self._text, True, theme.colours.text
         )

@@ -2,6 +2,12 @@
 Pushed on top of GameScene when the player pauses. Renders a
 semi-transparent overlay so the game world stays visible behind it.
 Quit-to-menu uses ConfirmDialog to prevent accidental exits.
+
+NOTE (decision #25): This scene is a plain `Scene`. As an overlay
+that draws over the live game world, it may legitimately stay a
+plain `Scene` rather than migrate to `DescribedScene` — see
+docs/SCENE_AUTHORING_GUIDE.md section 1. Evaluate, do not assume
+migration.
 """
 
 from __future__ import annotations
