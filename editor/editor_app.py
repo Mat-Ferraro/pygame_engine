@@ -374,6 +374,7 @@ class EditorApplication:
                         self._state.enter_edit()
 
             self._update_scene(dt)
+            self._handle_pending_actions()
             self._render_scene()
 
             if self._viewport is not None:
@@ -405,6 +406,47 @@ class EditorApplication:
             self._scene.update(effective_dt)
         except Exception as exc:
             self._state.set_status(f"Error in update(): {exc}")
+
+    def _handle_pending_actions(self) -> None:
+        """
+        Consume and act on any one-shot action a panel requested.
+
+        Panels (e.g. the toolbar's "Save Layout") don't touch the
+        descriptor directly — they raise a ``pending_action`` on the
+        state, and the application performs the real work here, where it
+        owns the scene and descriptor.
+        """
+        action = self._state.take_pending_action()
+        if action is None:
+            return
+
+        if action == self._state.ACTION_SAVE_LAYOUT:
+            self._save_layout()
+
+    def _save_layout(self) -> None:
+        """
+        Write the current descriptor to the scene's layout file.
+
+        The descriptor is the source of truth for geometry, so saving it
+        persists every edit made via the inspector or gizmos. Errors are
+        surfaced in the status bar rather than crashing the editor.
+        """
+        descriptor = self._get_descriptor()
+        if descriptor is None:
+            self._state.set_status("Save Layout: no descriptor to save.")
+            return
+        if not self._state.layout_path:
+            self._state.set_status("Save Layout: no layout path set.")
+            return
+
+        from pathlib import Path
+        try:
+            descriptor.save(Path(self._state.layout_path))
+            self._state.set_status(f"Layout saved: {self._state.layout_path}")
+            print(f"[editor] layout saved to {self._state.layout_path}")
+        except OSError as exc:
+            self._state.set_status(f"Save Layout failed: {exc}")
+            print(f"[editor] save layout failed: {exc}")
 
     def _render_scene(self) -> None:
         """Render the game scene into the viewport subsurface."""
@@ -679,9 +721,13 @@ class EditorApplication:
             width=VIEWPORT_W,
             height=VIEWPORT_H,
         )
+        layout_path = None
         if isinstance(result, (list, tuple)) and len(result) >= 2:
             self._scene = result[0]
             status      = str(result[1])
+            # Third element is the layout path (where Save Layout writes).
+            if len(result) >= 3:
+                layout_path = result[2]
         else:
             self._scene = None
             status      = f"Unexpected return from loader: {result!r}"
@@ -689,6 +735,11 @@ class EditorApplication:
         print(f"[editor] _load_scene: {status}")
         if self._scene is not None:
             self._state.scene_path = self._scene_class.__name__
+            # Storing the layout path enables the "Save Layout" action —
+            # the toolbar greys it out while this is None.
+            if layout_path is not None:
+                self._state.layout_path = str(layout_path)
+                print(f"[editor] layout path: {layout_path}")
 
     # ── OpenGL texture upload ─────────────────────────────────────────────────
 

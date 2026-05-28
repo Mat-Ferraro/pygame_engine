@@ -6,13 +6,20 @@ A DescribedScene version of example_buttons. Use this with the scene editor:
     py -3.13 -m editor --scene examples.example_buttons_described.ButtonDescribedScene
 
 What this demonstrates:
-- How to migrate a regular Scene to DescribedScene
-- The layout descriptor populating the hierarchy panel
-- Widget nodes visible and selectable in the editor
-- The scene still runs identically as a standalone example
+- The intended DescribedScene pattern: a subclass overrides ONLY
+  ``_build_layout()`` (declare the UI as a descriptor) and, optionally,
+  ``_bind_behavior()`` (attach callbacks to widgets by id). The base
+  class handles realising the descriptor into a live widget tree, keeping
+  widget geometry bound to the descriptor, and tearing the bindings down
+  on exit.
+- Because the base class binds each widget's rect to its descriptor node,
+  editing geometry in the editor (inspector fields, drag gizmos) moves
+  the actual widget — the binding is live.
 
-The actual widget construction reads from the SceneDescriptor, so the
-editor can inspect and eventually edit the layout live.
+Note: this scene does NOT override on_enter / on_exit / build its own
+widgets. Earlier versions did, which fought the base class and broke the
+editor's live editing. The engine already does build → load → realise →
+bind for you; a scene just declares layout and wires behaviour.
 """
 
 from __future__ import annotations
@@ -24,7 +31,7 @@ from pygame_engine.layout import anchor, column
 from pygame_engine.scene.described_scene import DescribedScene
 import pygame_engine.scene.layout_builder  # noqa: F401 — patches builder()
 from pygame_engine.theme.runtime import get_theme
-from pygame_engine.ui import Button, Label, Panel
+from pygame_engine.ui import Label
 from pygame_engine.input import actions
 
 
@@ -32,8 +39,8 @@ class ButtonDescribedScene(DescribedScene):
     """
     Main-menu button layout as a DescribedScene.
 
-    The descriptor is built in _build_layout() using the Layout DSL.
-    on_enter() reads from the descriptor to construct actual pygame widgets.
+    Overrides only ``_build_layout()`` and ``_bind_behavior()``. The base
+    class realises the descriptor and keeps widget geometry bound to it.
     """
 
     @classmethod
@@ -52,7 +59,12 @@ class ButtonDescribedScene(DescribedScene):
     # ── Layout descriptor ─────────────────────────────────────────────────────
 
     def _build_layout(self) -> None:
-        """Declare the widget tree in the SceneDescriptor."""
+        """
+        Declare the widget tree in the SceneDescriptor.
+
+        Font sizes / colours are carried as node props so the loader's
+        Label builder reproduces the intended appearance.
+        """
         screen = pygame.Rect(0, 0,
                              self._app.config.width,
                              self._app.config.height)
@@ -80,7 +92,9 @@ class ButtonDescribedScene(DescribedScene):
                     w=title_rect.w, h=title_rect.h,
                     parent="root",
                     text="Main Menu",
-                    align="center")
+                    align="center",
+                    font_size=theme.typography.xl,
+                    colour=list(theme.colours.text))
 
             # Main panel
             L.panel("main_panel",
@@ -120,7 +134,9 @@ class ButtonDescribedScene(DescribedScene):
                     w=status_rect.w, h=status_rect.h,
                     parent="root",
                     text="Click a button",
-                    align="center")
+                    align="center",
+                    font_size=theme.typography.sm,
+                    colour=list(theme.colours.text_secondary))
 
             # Hint label
             L.label("hint_label",
@@ -128,91 +144,38 @@ class ButtonDescribedScene(DescribedScene):
                     w=hint_rect.w, h=hint_rect.h,
                     parent="root",
                     text="ESC to quit",
-                    align="center")
+                    align="center",
+                    font_size=theme.typography.xs,
+                    colour=list(theme.colours.text_secondary))
 
-    # ── Widget construction from descriptor ───────────────────────────────────
+    # ── Behaviour ──────────────────────────────────────────────────────────────
 
-    def on_enter(self) -> None:
-        super().on_enter()   # calls _build_layout()
-        self._build_widgets()
+    def _bind_behavior(self) -> None:
+        """
+        Attach callbacks and per-instance state to the built widgets.
 
-    def _build_widgets(self) -> None:
-        """Instantiate real pygame widgets from the descriptor nodes."""
-        theme = get_theme()
+        Runs after the widget tree exists (and after every rebuild), so
+        widgets are looked up by id via self.widget() / self.find_widget().
+        """
+        self.widget("btn_new_game").on_click = lambda: self._set_status("New Game clicked!")
+        self.widget("btn_options").on_click  = lambda: self._set_status("Options clicked!")
+        self.widget("btn_quit").on_click     = self._app.stop
 
-        def r(node_id: str) -> pygame.Rect:
-            """Get a pygame.Rect from a descriptor node."""
-            node = self.layout.get(node_id)
-            return node.rect.to_pygame_rect()
+        # The disabled button is a normal Button flagged not-enabled.
+        self.widget("btn_disabled").enabled = False
 
-        def prop(node_id: str, key: str, default="") -> str:
-            """Get a prop value from a descriptor node."""
-            node = self.layout.get(node_id)
-            obs  = node.props.get(key)
-            return obs.value if obs is not None else default
+        # The root Panel draws a themed background by default; the menu
+        # wants the scene's own fill to show through. Suppress it. Note the
+        # (surface, ctx) signature — Panel.render calls
+        # self._draw_background(surface, ctx).
+        root = self.find_widget("root")
+        if root is not None:
+            root._draw_background = lambda s, ctx: None  # type: ignore[method-assign]
 
-        # Root — suppress the default themed background so the scene's own
-        # fill (in render()) shows through. Panel.render() calls
-        # self._draw_background(surface, ctx); because we're assigning a
-        # plain function to an instance attribute (not a method), Python
-        # does NOT bind self, so the lambda must accept exactly the two
-        # args the call site passes: (surface, ctx).
-        root = Panel(r("root"))
-        root._draw_background = lambda s, ctx: None  # type: ignore[method-assign]
-
-        # Title
-        title = Label(r("title"),
-                      prop("title", "text", "Main Menu"),
-                      font_size=theme.typography.xl,
-                      colour=theme.colours.text,
-                      align=prop("title", "align", "center"))
-
-        # Main panel
-        main_panel = Panel(r("main_panel"))
-
-        # Buttons
-        btn_new = Button(r("btn_new_game"),
-                         prop("btn_new_game", "label", "New Game"),
-                         on_click=lambda: self._set_status("New Game clicked!"))
-
-        btn_opts = Button(r("btn_options"),
-                          prop("btn_options", "label", "Options"),
-                          on_click=lambda: self._set_status("Options clicked!"))
-
-        btn_quit = Button(r("btn_quit"),
-                          prop("btn_quit", "label", "Quit"),
-                          on_click=self._app.stop)
-
-        main_panel.add(btn_new)
-        main_panel.add(btn_opts)
-        main_panel.add(btn_quit)
-
-        # Disabled button
-        btn_disabled = Button(r("btn_disabled"),
-                              prop("btn_disabled", "label", "Unavailable"))
-        btn_disabled.enabled = False
-
-        # Status label
-        self._status_label = Label(r("status_label"),
-                                   prop("status_label", "text", "Click a button"),
-                                   font_size=theme.typography.sm,
-                                   colour=theme.colours.text_secondary,
-                                   align=prop("status_label", "align", "center"))
-
-        # Hint label
-        hint = Label(r("hint_label"),
-                     prop("hint_label", "text", "ESC to quit"),
-                     font_size=theme.typography.xs,
-                     colour=theme.colours.text_secondary,
-                     align="center")
-
-        root.add(main_panel)
-        root.add(title)
-        root.add(btn_disabled)
-        root.add(self._status_label)
-        root.add(hint)
-
-        self.root_widget = root
+        # Keep a handle to the status label so _set_status can update it.
+        status = self.find_widget("status_label")
+        if isinstance(status, Label):
+            self._status_label = status
 
     # ── Scene behaviour ───────────────────────────────────────────────────────
 

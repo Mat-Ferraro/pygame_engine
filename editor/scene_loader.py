@@ -223,10 +223,24 @@ def load_scene_for_editor(
         return scene, f"Loaded: {name}  (no descriptor)", None
 
     # Load a saved layout over the code-built defaults, if one exists.
+    #
+    # Ordering matters. on_enter() has already realised the widget tree and
+    # subscribed each widget's rect to its descriptor node's ObservableRect
+    # (via LayoutLoader). But desc.load() REPLACES every node — and therefore
+    # every ObservableRect — with fresh objects deserialised from the file.
+    # After a load, the live widgets are still subscribed to the OLD, now
+    # orphaned rects, so editing the descriptor (inspector / gizmo) moves the
+    # selection outline but never the widget.
+    #
+    # The fix: after loading the file into the descriptor, re-realise the
+    # widget tree from the loaded descriptor so the bindings attach to the
+    # final rects. We reuse the scene's own dispose + LayoutLoader path so the
+    # behaviour matches the engine's resize rebuild exactly.
     layout_status = ""
     if layout_path is not None and layout_path.exists():
         try:
             desc.load(layout_path)
+            _rerealise_after_load(scene)
             layout_status = "  [layout restored]"
         except (ValueError, OSError) as exc:
             layout_status = f"  [layout file ignored: {exc}]"
@@ -236,3 +250,37 @@ def load_scene_for_editor(
         f"Loaded: {name}  ({desc.node_count} nodes){layout_status}",
         layout_path,
     )
+
+
+def _rerealise_after_load(scene: Scene) -> None:
+    """
+    Rebuild the live widget tree from the scene's current descriptor.
+
+    Called after ``descriptor.load()`` has swapped in fresh nodes/rects, so
+    the new widget tree's rect subscriptions point at the loaded rects rather
+    than the discarded ones from the initial on_enter() build.
+
+    Only meaningful for a ``DescribedScene`` that exposes the standard
+    ``_dispose_loaded`` / ``_loaded`` / ``_bind_behavior`` lifecycle. Anything
+    else is left untouched.
+    """
+    if not isinstance(scene, DescribedScene):
+        return
+
+    from pygame_engine.scene.layout_loader import LayoutLoader
+
+    # Release the subscriptions created by the original on_enter() build so
+    # they do not leak or fire against the discarded rects.
+    dispose = getattr(scene, "_dispose_loaded", None)
+    if callable(dispose):
+        dispose()
+
+    # Realise the loaded descriptor into a fresh, correctly-bound tree.
+    loaded = LayoutLoader().load(scene.layout)
+    scene._loaded     = loaded          # type: ignore[attr-defined]
+    scene.root_widget = loaded.root
+
+    # Re-attach behaviour (on_click handlers, etc.) to the new widgets.
+    bind = getattr(scene, "_bind_behavior", None)
+    if callable(bind):
+        bind()

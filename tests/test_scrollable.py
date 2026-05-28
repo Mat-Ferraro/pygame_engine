@@ -103,16 +103,48 @@ def test_setting_child_resets_scroll() -> None:
 
 # ── Event handling ────────────────────────────────────────────────────────────
 
-def test_wheel_event_inside_viewport_scrolls() -> None:
+def test_wheel_event_inside_viewport_scrolls(monkeypatch) -> None:
+    """
+    A wheel event scrolls when the cursor is over the viewport.
+
+    MOUSEWHEEL events carry no position, so Scrollable reads the cursor
+    via ``pygame.mouse.get_pos()``. We monkeypatch that to a fixed point
+    inside the viewport rather than calling ``pygame.mouse.set_pos()`` —
+    the latter writes the real OS cursor, which doesn't reliably stick in
+    headless / CI / out-of-focus runs and makes this test order-dependent.
+    Patching ``get_pos`` makes the test deterministic in any environment.
+    """
     child = Widget(CONTENT)
     s = Scrollable(VIEWPORT, child=child)
 
-    # Simulate mouse inside viewport
-    pygame.mouse.set_pos((100, 100))
+    # Cursor inside the viewport — deterministic, no real OS mouse involved.
+    monkeypatch.setattr(pygame.mouse, "get_pos", lambda: (100, 100))
+
     wheel = pygame.event.Event(pygame.MOUSEWHEEL, {"x": 0, "y": -1, "flipped": False})
     consumed = s.handle_event(wheel)
+
     assert consumed is True
     assert s.scroll_y == s._scroll_speed
+
+
+def test_wheel_event_outside_viewport_ignored(monkeypatch) -> None:
+    """
+    A wheel event does nothing when the cursor is outside the viewport.
+
+    The complement of the test above — guards the collidepoint branch in
+    Scrollable's wheel handling. Also deterministic via monkeypatch.
+    """
+    child = Widget(CONTENT)
+    s = Scrollable(VIEWPORT, child=child)
+
+    # Cursor well outside the 300x200 viewport.
+    monkeypatch.setattr(pygame.mouse, "get_pos", lambda: (5000, 5000))
+
+    wheel = pygame.event.Event(pygame.MOUSEWHEEL, {"x": 0, "y": -1, "flipped": False})
+    consumed = s.handle_event(wheel)
+
+    assert consumed is False
+    assert s.scroll_y == 0.0
 
 
 def test_mouse_event_routed_to_child_with_offset() -> None:
