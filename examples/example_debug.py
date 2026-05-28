@@ -32,11 +32,11 @@ from __future__ import annotations
 import pygame
 
 from pygame_engine.app import Application, AppConfig
-from pygame_engine.debug.debug_log import clear as log_clear
-from pygame_engine.debug.debug_log import error as log_error
-from pygame_engine.debug.debug_log import get_entries
-from pygame_engine.debug.debug_log import log as log_info
-from pygame_engine.debug.debug_log import warn as log_warn
+from pygame_engine.devtools.debug_log import clear as log_clear
+from pygame_engine.devtools.debug_log import error as log_error
+from pygame_engine.devtools.debug_log import get_entries
+from pygame_engine.devtools.debug_log import log as log_info
+from pygame_engine.devtools.debug_log import warn as log_warn
 from pygame_engine.input import actions
 from pygame_engine.layout import anchor, column
 from pygame_engine.scene import Scene

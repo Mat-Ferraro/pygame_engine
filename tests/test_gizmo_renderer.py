@@ -3,7 +3,7 @@
 from __future__ import annotations
 import pytest
 import pygame
-from pygame_engine.debug.gizmo_renderer import GizmoRenderer, Gizmo
+from pygame_engine.devtools.gizmo_renderer import GizmoRenderer, Gizmo
 
 
 def make_surface() -> pygame.Surface:

@@ -1,14 +1,14 @@
 """
 tests/test_debug_log.py
 
-Tests for pygame_engine.debug.debug_log.
+Tests for pygame_engine.devtools.debug_log.
 
 Covers: log/warn/error, filtering by level and tag, limit, clear.
 """
 
 import pytest
 
-from pygame_engine.debug.debug_log import (
+from pygame_engine.devtools.debug_log import (
     LogLevel,
     clear,
     error,

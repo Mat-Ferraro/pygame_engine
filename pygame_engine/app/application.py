@@ -25,9 +25,9 @@ from pygame_engine.app.render_context import RenderContext
 from pygame_engine.app.time_manager import TimeManager
 from pygame_engine.assets.asset_loader import AssetLoader
 from pygame_engine.audio.audio_manager import AudioManager
-from pygame_engine.debug.console import DebugConsole
-from pygame_engine.debug.gizmo_renderer import GizmoRenderer
-from pygame_engine.debug.overlay import DebugOverlay
+from pygame_engine.devtools.console import DebugConsole
+from pygame_engine.devtools.gizmo_renderer import GizmoRenderer
+from pygame_engine.devtools.overlay import DebugOverlay
 from pygame_engine.events.event_bus import bus as _event_bus
 from pygame_engine.input.input_manager import InputManager
 from pygame_engine.scene.scene import Scene
@@ -284,7 +284,7 @@ class Application:
         - testing: re-raise immediately so pytest catches it.
         - development / production: push ErrorScene.
         """
-        from pygame_engine.debug.debug_log import error as _log_error
+        from pygame_engine.devtools.debug_log import error as _log_error
         _log_error(
             f"Runtime error in scene {phase}(): {type(exc).__name__}: {exc}",
             tag="engine",
@@ -357,7 +357,7 @@ class Application:
                 _flags.toggle("show_overlay")
                 return
             if self._input_manager.was_action_pressed(_actions.INSPECTOR_TOGGLE):
-                from pygame_engine.debug.inspector import Inspector
+                from pygame_engine.devtools.inspector import Inspector
                 Inspector().dump(self._scene_manager)
                 return
             if self._input_manager.was_action_pressed(_actions.CONSOLE_TOGGLE):
