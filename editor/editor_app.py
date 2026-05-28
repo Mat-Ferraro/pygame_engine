@@ -3,7 +3,7 @@ EditorApplication — the scene editor entry point.
 
 Wraps a pygame_engine Application in an ImGui docking layout. The game
 scene renders into a pygame subsurface which is then displayed as an
-ImGui image widget. All editor panels (hierarchy, inspector, scene)
+ImGui image widget. All editor panels (hierarchy, inspector, toolbar)
 surround the viewport.
 
 Architecture
@@ -13,62 +13,47 @@ Architecture
 - The game scene runs with time_scale=0 in edit mode (nothing moves)
 - The game scene is completely unaware of the editor's existence
 
-Persistence
------------
-Three independent things persist between sessions:
+Window behaviour
+----------------
+- Panels auto-dock into a default layout on first launch and after
+  ``View → Reset Layout``: Hierarchy top-left, Inspector bottom-left,
+  Scene viewport filling the rest. Subsequent launches restore the
+  user's last layout from ``editor/imgui.ini``.
+- The persisted layout is validated before being trusted — if any
+  expected window is missing from the ini, we rebuild defaults
+  instead of restoring a half-broken layout.
+- Windows can only be moved by dragging their title bar / tab, not
+  by dragging anywhere in the body. This matches Unity / Blender /
+  Visual Studio conventions and prevents accidental panel drags while
+  clicking widgets inside a panel.
 
-1. **ImGui panel/dock geometry** — handled entirely by ImGui itself. We
-   point ``io.ini_filename`` at a fixed absolute path (``editor/imgui.ini``)
-   *before the first frame* so ImGui both loads and auto-saves it.
-
-2. **Editor settings** — grid size, overlay toggles, last scene — live in
-   ``editor/editor_settings.json`` via ``editor.editor_settings``.
-
-3. **Scene layout** — the widget rects/props of the scene being edited —
-   live in a ``*.layout.json`` next to the scene module.
-
-The default dock layout
------------------------
-``DEFAULT_LAYOUT_INI`` below is a hardcoded ImGui settings string — a
-hand-tuned panel layout captured from a real ``imgui.ini``. It is used as a
-fallback in exactly two cases:
-
-* **First run** — there is no ``editor/imgui.ini`` on disk yet.
-* **Reset Layout** — the user picks View → Reset Layout.
-
-In both cases we feed the string straight to
-``imgui.load_ini_settings_from_memory()``. ImGui parses it with the same
-code path it uses for a real ini file, so the editor is restored to that
-exact layout — Scene wide on the left, Hierarchy and Inspector as two
-side-by-side columns on the right. No fraction math, no dock-builder; the
-hand-tuned file IS the default.
-
-To change the default: lay panels out the way you like, quit (which writes
-``editor/imgui.ini``), then paste that file's contents into
-``DEFAULT_LAYOUT_INI``.
-
-The captured layout is sized for a 1600x900 window. ImGui automatically
-rescales dock nodes to the actual dockspace, so other window sizes still
-get a sensible layout.
-
-Caveat: the descriptor is currently a parallel model. Loading a layout
-updates the descriptor, but unless the scene rebuilds its real widgets
-from the descriptor, the viewport will keep showing the code-built layout.
-The inspector and hierarchy reflect the loaded data correctly either way.
+Selection gizmos
+----------------
+When ``EditorState.show_gizmos`` is True and the editor is in EDIT
+mode, the viewport overlays a selection outline + corner handles on
+``selected_node_id`` and a faint hover outline on ``hovered_node_id``
+(when distinct from the selection). Both are pure cosmetic overlays
+drawn after the scene render — the game scene itself never sees them.
 
 Usage::
 
+    # From repo root:
     python -m editor
+
+    # Or directly:
     python editor/editor_app.py
+
+    # With a specific scene:
     python -m editor --scene mygame.scenes.main_menu.MainMenuScene
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib
 import pathlib
+import importlib
 import sys
+import traceback
 from pathlib import Path
 from typing import Type
 
@@ -84,7 +69,6 @@ from pygame_engine.scene.described_scene import DescribedScene
 from pygame_engine.theme.runtime import get_theme
 
 from editor.editor_state import EditorState, EditorMode
-from editor.editor_settings import load_settings, save_settings
 from editor.panels.toolbar import render_toolbar
 from editor.panels.hierarchy import render_hierarchy
 from editor.panels.inspector import render_inspector
@@ -94,63 +78,171 @@ from editor.panels.inspector import render_inspector
 
 EDITOR_WIDTH  = 1600
 EDITOR_HEIGHT = 900
-PANEL_WIDTH   = 280     # nominal hierarchy + inspector side panel width
-TOOLBAR_H     = 56      # menu bar (~20px) + controls bar (32px) + padding (4px)
+PANEL_WIDTH   = 280
+TOOLBAR_H     = 56
 VIEWPORT_W    = EDITOR_WIDTH - PANEL_WIDTH
 VIEWPORT_H    = EDITOR_HEIGHT - TOOLBAR_H
 EDITOR_TITLE  = "pygame_engine — Scene Editor"
 
-#: Absolute path to the ImGui layout file. Resolved relative to this module
-#: so it is stable regardless of the process working directory.
-IMGUI_INI_PATH = pathlib.Path(__file__).resolve().parent / "imgui.ini"
-
-#: Window titles. Used by begin(); MUST match the [Window][...] sections in
-#: DEFAULT_LAYOUT_INI exactly, or ImGui cannot place the window.
 WIN_HIERARCHY = "Hierarchy"
 WIN_INSPECTOR = "Inspector"
 WIN_SCENE     = "Scene"
 
-# ── Hardcoded default panel layout ───────────────────────────────────────────
-# A hand-tuned ImGui settings string. Used verbatim as the fallback layout
-# when editor/imgui.ini is missing (first run) or the user resets the layout.
-# This is the exact format ImGui itself writes — to update the default,
-# arrange the panels, quit, and paste the new editor/imgui.ini contents here.
-DEFAULT_LAYOUT_INI = """\
-[Window][WindowOverViewport_11111111]
-Pos=0,75
-Size=1600,825
-Collapsed=0
+EXPECTED_WINDOWS: tuple[str, ...] = (WIN_HIERARCHY, WIN_INSPECTOR, WIN_SCENE)
 
-[Window][Debug##Default]
-Pos=60,60
-Size=400,400
-Collapsed=0
+# ── Gizmo styling ─────────────────────────────────────────────────────────────
+# These mirror the accent blue used by the toolbar so selection in the
+# viewport visually rhymes with selection elsewhere in the editor.
+GIZMO_SELECTED_RGB:  tuple[int, int, int] = (51, 128, 230)
+GIZMO_HOVER_RGB:     tuple[int, int, int] = (51, 128, 230)
+GIZMO_HANDLE_INNER:  tuple[int, int, int] = (255, 255, 255)
+GIZMO_OUTLINE_PX:    int = 2     # selection outline thickness
+GIZMO_HOVER_PX:      int = 1     # hover outline thickness
+GIZMO_HANDLE_PX:     int = 6     # corner handle side length
+GIZMO_HOVER_ALPHA:   int = 140   # 0–255; hover is intentionally faint
 
-[Window][Hierarchy]
-Pos=1206,75
-Size=183,825
-Collapsed=0
-DockId=0x00000001,0
 
-[Window][Inspector]
-Pos=1391,75
-Size=209,825
-Collapsed=0
-DockId=0x00000002,0
+# ── ImGui binding compatibility helpers ──────────────────────────────────────
 
-[Window][Scene]
-Pos=0,75
-Size=1204,825
-Collapsed=0
-DockId=0x00000003,0
+def _resolve_dir(direction: str) -> int:
+    """
+    Resolve an ImGui cardinal direction to its integer value.
 
-[Docking][Data]
-DockSpace     ID=0x08BD597D Window=0x1BBC0F80 Pos=0,75 Size=1600,825 Split=X
-  DockNode    ID=0x00000003 Parent=0x08BD597D SizeRef=1204,825 CentralNode=1 Selected=0xE601B12F
-  DockNode    ID=0x00000004 Parent=0x08BD597D SizeRef=394,825 Split=X Selected=0xBABDAE5E
-    DockNode  ID=0x00000001 Parent=0x00000004 SizeRef=183,825 Selected=0xBABDAE5E
-    DockNode  ID=0x00000002 Parent=0x00000004 SizeRef=209,825 Selected=0x36DC96AB
-"""
+    Tries every plausible enum spelling — ``Dir_.left``, ``Dir_.Left``,
+    ``Dir.left``, ``Dir.Left`` — and returns the integer value.
+    """
+    candidates = (
+        ("Dir_", direction.lower()),
+        ("Dir_", direction.capitalize()),
+        ("Dir",  direction.lower()),
+        ("Dir",  direction.capitalize()),
+    )
+    for enum_name, member in candidates:
+        enum = getattr(imgui, enum_name, None)
+        if enum is None:
+            continue
+        value = getattr(enum, member, None)
+        if value is None:
+            continue
+        return int(getattr(value, "value", value))
+    raise RuntimeError(
+        f"Could not find imgui direction enum for {direction!r}. "
+        "Checked imgui.Dir_ and imgui.Dir, snake_case and PascalCase."
+    )
+
+
+_SPLIT_ATTR_DIR: str | None      = None
+_SPLIT_ATTR_OPPOSITE: str | None = None
+
+
+def _split_node(di, node_id: int, direction: int, ratio: float) -> tuple[int, int]:
+    """
+    Call ``dock_builder_split_node`` and return ``(id_at_dir, id_at_opposite)``.
+
+    Handles both tuple-returning (older bindings) and struct-returning
+    (current bindings) variants. On first call with a struct, discovers
+    the attribute names and caches them for subsequent calls.
+    """
+    global _SPLIT_ATTR_DIR, _SPLIT_ATTR_OPPOSITE
+
+    result = di.dock_builder_split_node(node_id, direction, ratio)
+
+    if isinstance(result, (tuple, list)) and len(result) == 2:
+        return int(result[0]), int(result[1])
+
+    if _SPLIT_ATTR_DIR is not None and _SPLIT_ATTR_OPPOSITE is not None:
+        return (
+            int(getattr(result, _SPLIT_ATTR_DIR)),
+            int(getattr(result, _SPLIT_ATTR_OPPOSITE)),
+        )
+
+    known_pairs = (
+        ("id_at_dir",         "id_at_opposite_dir"),
+        ("id_at_dir",         "id_at_opposite"),
+        ("at_dir",            "at_opposite_dir"),
+        ("at_dir",            "at_opposite"),
+        ("id_dir",            "id_opposite"),
+    )
+    for a, b in known_pairs:
+        if hasattr(result, a) and hasattr(result, b):
+            _SPLIT_ATTR_DIR, _SPLIT_ATTR_OPPOSITE = a, b
+            print(f"[editor] dock split result attrs: {a!r}, {b!r}")
+            return int(getattr(result, a)), int(getattr(result, b))
+
+    int_attrs = [
+        name for name in dir(result)
+        if not name.startswith("_") and isinstance(getattr(result, name, None), int)
+    ]
+    if len(int_attrs) >= 2:
+        a, b = int_attrs[0], int_attrs[1]
+        _SPLIT_ATTR_DIR, _SPLIT_ATTR_OPPOSITE = a, b
+        print(
+            f"[editor] dock split result: introspected attrs {a!r}, {b!r} "
+            f"from {type(result).__name__}; full attr list: {int_attrs}"
+        )
+        return int(getattr(result, a)), int(getattr(result, b))
+
+    raise RuntimeError(
+        f"dock_builder_split_node returned {type(result).__name__!r}; "
+        f"could not identify ID attributes. dir(result)={dir(result)}"
+    )
+
+
+# ── Ini validation ────────────────────────────────────────────────────────────
+
+def _ini_is_valid(ini_text: str, required: tuple[str, ...]) -> tuple[bool, str]:
+    """Check whether a persisted ImGui ini file is usable."""
+    missing = [name for name in required
+               if f"[Window][{name}]" not in ini_text]
+    if missing:
+        return False, f"missing window section(s): {', '.join(missing)}"
+    if "[Docking][Data]" not in ini_text:
+        return False, "missing [Docking][Data] block"
+    return True, ""
+
+
+# ── EditorApplication ─────────────────────────────────────────────────────────
+
+def _save_imgui_ini() -> None:
+    """Save ImGui layout to editor/imgui.ini."""
+    try:
+        import pathlib
+        from imgui_bundle import imgui as _imgui
+        ini_data = _imgui.save_ini_settings_to_memory()  # type: ignore[attr-defined]
+        pathlib.Path("editor").mkdir(exist_ok=True)
+        dest = pathlib.Path("editor/imgui.ini")
+        dest.write_text(ini_data, encoding="utf-8")
+        print(f"[editor] _save_imgui_ini: wrote {len(ini_data)} chars to {dest.absolute()}")
+    except Exception as e:
+        print(f"[editor] _save_imgui_ini FAILED: {e}")
+
+
+def _render_texture(tex_id: int, w: float, h: float) -> None:
+    """Render an OpenGL texture into the current ImGui window."""
+    from imgui_bundle import imgui
+    try:
+        ref = imgui.ImTextureRef(tex_id)  # type: ignore[attr-defined]
+        imgui.image(ref, imgui.ImVec2(w, h), imgui.ImVec2(0, 1), imgui.ImVec2(1, 0))
+        return
+    except Exception:
+        pass
+    try:
+        from imgui_bundle import imgui_tex_id  # type: ignore[import]
+        imgui.image(imgui_tex_id(tex_id), imgui.ImVec2(w, h),
+                    imgui.ImVec2(0, 1), imgui.ImVec2(1, 0))
+        return
+    except Exception:
+        pass
+    try:
+        imgui.image(tex_id, imgui.ImVec2(w, h),  # type: ignore[arg-type]
+                    imgui.ImVec2(0, 1), imgui.ImVec2(1, 0))
+        return
+    except Exception:
+        pass
+    try:
+        imgui.image(tex_id, (w, h), (0, 1), (1, 0))  # type: ignore[arg-type]
+    except Exception:
+        pass
 
 
 class EditorApplication:
@@ -166,20 +258,14 @@ class EditorApplication:
         self._scene_class = scene_class
         self._state       = EditorState()
 
-        # These are created in run()
-        self._display:        pygame.Surface | None = None
-        self._viewport:       pygame.Surface | None = None   # pygame subsurface
+        self._display:    pygame.Surface | None = None
+        self._viewport:   pygame.Surface | None = None
         self._imgui_renderer: PygameRenderer | None = None
-        self._app:            Application | None = None
-        self._scene:          Scene | None = None
-        self._tex_id:          int  = 0      # OpenGL texture id for viewport image
-
-        # True = apply the hardcoded default layout this frame. Set on the
-        # first run (no ini) and whenever the user picks "Reset Layout".
+        self._app:        Application | None = None
+        self._scene:      Scene | None = None
+        self._tex_id:          int  = 0
         self._reset_layout_flag: bool = True
-
-        # Where this scene's layout is saved. None = persistence unavailable.
-        self._layout_path: Path | None = None
+        self._scene_dock_id: int = 0
 
     # ── Public entry point ────────────────────────────────────────────────────
 
@@ -187,43 +273,66 @@ class EditorApplication:
         """Initialise everything and enter the editor frame loop."""
         pygame.init()
 
-        if load_settings(self._state):
-            print("[editor] loaded editor settings")
-        else:
-            print("[editor] no editor settings file — using defaults")
-
         self._display = pygame.display.set_mode(
             (EDITOR_WIDTH, EDITOR_HEIGHT),
             pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE,
         )
         pygame.display.set_caption(EDITOR_TITLE)
 
-        # ── imgui initialisation ──────────────────────────────────────────────
         imgui.create_context()
         io = imgui.get_io()
         io.config_flags |= imgui.ConfigFlags_.docking_enable
         io.config_flags |= imgui.ConfigFlags_.nav_enable_keyboard
 
-        self._bind_imgui_ini(io)
+        try:
+            io.config_windows_move_from_title_bar_only = True  # type: ignore[attr-defined]
+        except AttributeError:
+            try:
+                io.ConfigWindowsMoveFromTitleBarOnly = True   # type: ignore[attr-defined]
+            except AttributeError:
+                pass
+
+        try:
+            io.ini_saving_rate = 0.0  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+        try:
+            io.ini_file_name = ""  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
 
         self._imgui_renderer = PygameRenderer()
+
+        ini_path = pathlib.Path("editor/imgui.ini")
+        if ini_path.exists():
+            try:
+                ini_text = ini_path.read_text(encoding="utf-8")
+                valid, reason = _ini_is_valid(ini_text, EXPECTED_WINDOWS)
+                if valid:
+                    imgui.load_ini_settings_from_memory(ini_text)
+                    self._reset_layout_flag = False
+                    print(f"[editor] loaded layout from {ini_path}")
+                else:
+                    print(
+                        f"[editor] ini at {ini_path} is invalid ({reason}); "
+                        "rebuilding default layout"
+                    )
+                    self._reset_layout_flag = True
+            except Exception as exc:
+                print(f"[editor] failed to load {ini_path}: {exc} — using defaults")
+                self._reset_layout_flag = True
+        else:
+            print("[editor] no imgui.ini found — building default dock layout")
+            self._reset_layout_flag = True
+
+        self._ini_loaded  = False
+        self._frame_count = 0
 
         io.display_size = imgui.ImVec2(float(EDITOR_WIDTH), float(EDITOR_HEIGHT))
         io.display_framebuffer_scale = imgui.ImVec2(1.0, 1.0)
 
         imgui.style_colors_dark()
         self._apply_editor_style()
-
-        # Decide whether to apply the hardcoded default layout. If a saved
-        # editor/imgui.ini exists, ImGui has already restored it during
-        # _bind_imgui_ini() and we leave it alone. If not, flag the default
-        # layout to be applied on the first frame.
-        if IMGUI_INI_PATH.exists():
-            self._reset_layout_flag = False
-            print("[editor] imgui.ini found — restoring saved panel layout")
-        else:
-            self._reset_layout_flag = True
-            print("[editor] no imgui.ini — applying hardcoded default layout")
 
         self._viewport = pygame.Surface((VIEWPORT_W, VIEWPORT_H))
 
@@ -242,64 +351,6 @@ class EditorApplication:
         self._loop()
         self._shutdown()
 
-    # ── ImGui ini binding ─────────────────────────────────────────────────────
-
-    def _bind_imgui_ini(self, io: "imgui.IO") -> None:
-        """
-        Point ImGui's settings system at ``IMGUI_INI_PATH``.
-
-        Binding this BEFORE the first frame is what makes ImGui both load the
-        saved dock layout on startup and auto-save it on its own timer.
-        Different imgui-bundle versions expose this via a setter method or a
-        writable property; we try both, then fall back to a manual load.
-        """
-        ini = str(IMGUI_INI_PATH)
-        IMGUI_INI_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-        bound = False
-        setter = getattr(io, "set_ini_filename", None)
-        if callable(setter):
-            try:
-                setter(ini)
-                bound = True
-            except Exception:
-                bound = False
-
-        if not bound:
-            try:
-                io.ini_filename = ini  # type: ignore[attr-defined]
-                bound = True
-            except Exception:
-                bound = False
-
-        if bound:
-            print(f"[editor] imgui.ini bound to {ini}")
-            return
-
-        print("[editor] could not bind io.ini_filename — loading ini manually")
-        if IMGUI_INI_PATH.exists():
-            try:
-                imgui.load_ini_settings_from_disk(ini)  # type: ignore[attr-defined]
-            except Exception as exc:
-                print(f"[editor] manual ini load failed: {exc}")
-
-    def _apply_default_layout(self) -> None:
-        """
-        Apply the hardcoded ``DEFAULT_LAYOUT_INI`` to ImGui.
-
-        Feeds the string straight into ImGui's settings parser, the same
-        code path used for a real ini file. Called on the first frame when
-        there is no saved layout, and again whenever the user resets the
-        layout. ImGui rescales the dock nodes to the live dockspace, so the
-        captured 1600x900 layout still works at other window sizes.
-        """
-        try:
-            imgui.load_ini_settings_from_memory(DEFAULT_LAYOUT_INI)  # type: ignore[attr-defined]
-            print("[editor] applied hardcoded default layout")
-        except Exception as exc:
-            print(f"[editor] could not apply default layout: {exc}",
-                  file=sys.stderr)
-
     # ── Frame loop ────────────────────────────────────────────────────────────
 
     def _loop(self) -> None:
@@ -314,19 +365,14 @@ class EditorApplication:
 
                 if event.type == pygame.QUIT:
                     running = False
-
                 elif event.type == pygame.VIDEORESIZE:
                     self._on_resize(event.w, event.h)
-
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F5:
                         self._state.enter_play() if self._state.is_editing else self._state.enter_edit()
                     if event.key == pygame.K_ESCAPE and self._state.is_playing:
                         self._state.enter_edit()
-                    if event.key == pygame.K_s and (event.mod & pygame.KMOD_CTRL):
-                        self._state.request(self._state.ACTION_SAVE_LAYOUT)
 
-            self._handle_pending_action()
             self._update_scene(dt)
             self._render_scene()
 
@@ -349,34 +395,6 @@ class EditorApplication:
             self._imgui_renderer.render(imgui.get_draw_data())  # type: ignore[union-attr]
 
             pygame.display.flip()
-
-    # ── Actions ───────────────────────────────────────────────────────────────
-
-    def _handle_pending_action(self) -> None:
-        """Consume and act on a one-shot action from the toolbar or a hotkey."""
-        action = self._state.take_pending_action()
-        if action is None:
-            return
-        if action == self._state.ACTION_SAVE_LAYOUT:
-            self._save_layout()
-
-    def _save_layout(self) -> None:
-        """Save the current scene descriptor to its layout file."""
-        descriptor = self._get_descriptor()
-        if descriptor is None:
-            self._state.set_status("Save Layout: no descriptor to save")
-            return
-        if self._layout_path is None:
-            self._state.set_status("Save Layout: no layout path for this scene")
-            return
-
-        try:
-            descriptor.save(self._layout_path)
-            self._state.set_status(f"Layout saved → {self._layout_path.name}")
-            print(f"[editor] saved layout to {self._layout_path}")
-        except OSError as exc:
-            self._state.set_status(f"Save Layout failed: {exc}")
-            print(f"[editor] save layout FAILED: {exc}", file=sys.stderr)
 
     def _update_scene(self, dt: float) -> None:
         """Advance the scene (dt is 0 in edit mode)."""
@@ -409,8 +427,16 @@ class EditorApplication:
                 tint.fill((r, g, b, a))
                 self._viewport.blit(tint, (0, 0))
 
-        if self._state.show_grid and self._state.is_editing:
-            self._draw_grid()
+        # Grid and selection overlays are EDIT-mode only — play mode
+        # should look exactly like the game runs in production.
+        if self._state.is_editing:
+            if self._state.show_grid:
+                self._draw_grid()
+            if self._state.show_gizmos:
+                # Hover first, selection on top, so selecting the hovered
+                # node looks correct (no faint hover bleeding through).
+                self._draw_hover_gizmo()
+                self._draw_selection_gizmo()
 
     def _draw_grid(self) -> None:
         """Draw the snap grid onto the viewport."""
@@ -424,92 +450,215 @@ class EditorApplication:
         for y in range(0, h, size):
             pygame.draw.line(self._viewport, color, (0, y), (w, y))
 
+    # ── Selection gizmo ───────────────────────────────────────────────────────
+
+    def _get_node_rect(self, node_id: str) -> pygame.Rect | None:
+        """
+        Resolve a node id to its current pygame rect, or ``None``.
+
+        Returns None for any failure — descriptor missing, node missing,
+        rect conversion missing. Callers treat None as "nothing to draw"
+        and move on without raising.
+        """
+        if self._scene is None or not isinstance(self._scene, DescribedScene):
+            return None
+        descriptor = getattr(self._scene, "layout", None)
+        if descriptor is None:
+            return None
+        try:
+            node = descriptor.get(node_id)
+        except Exception:
+            return None
+        if node is None:
+            return None
+        try:
+            return node.rect.to_pygame_rect()
+        except Exception:
+            return None
+
+    def _draw_selection_gizmo(self) -> None:
+        """
+        Outline the selected node and draw four corner handles.
+
+        Handles are filled accent squares with a 1-pixel white inner
+        border, which keeps them readable against both dark and bright
+        scene backgrounds. F5 will hit-test against these handles for
+        resize; for now they're purely visual.
+        """
+        if self._viewport is None:
+            return
+        node_id = self._state.selected_node_id
+        if not node_id:
+            return
+        rect = self._get_node_rect(node_id)
+        if rect is None or rect.width <= 0 or rect.height <= 0:
+            return
+
+        # Outline. pygame.draw.rect with width>0 draws an outlined rect.
+        pygame.draw.rect(
+            self._viewport, GIZMO_SELECTED_RGB, rect,
+            width=GIZMO_OUTLINE_PX,
+        )
+
+        # Four corner handles. Each handle is centred on the corner so
+        # half overlaps the rect, half outside — the visual centre is
+        # exactly the corner, which is what feels right for F5's resize.
+        half = GIZMO_HANDLE_PX // 2
+        for corner_x, corner_y in (
+            (rect.left,  rect.top),
+            (rect.right, rect.top),
+            (rect.left,  rect.bottom),
+            (rect.right, rect.bottom),
+        ):
+            handle = pygame.Rect(
+                corner_x - half, corner_y - half,
+                GIZMO_HANDLE_PX, GIZMO_HANDLE_PX,
+            )
+            pygame.draw.rect(self._viewport, GIZMO_SELECTED_RGB, handle)
+            pygame.draw.rect(self._viewport, GIZMO_HANDLE_INNER, handle, width=1)
+
+    def _draw_hover_gizmo(self) -> None:
+        """
+        Faint outline on the hovered node, when it's not the selected one.
+
+        Drawing the hover overlay on the same node we're about to outline
+        as "selected" just doubles the line weight, so we skip it.
+        """
+        if self._viewport is None:
+            return
+        node_id = self._state.hovered_node_id
+        if not node_id or node_id == self._state.selected_node_id:
+            return
+        rect = self._get_node_rect(node_id)
+        if rect is None or rect.width <= 0 or rect.height <= 0:
+            return
+
+        # Alpha lines aren't directly supported by pygame.draw.rect on
+        # an opaque surface, so we composite onto a temp SRCALPHA layer
+        # then blit. Cheap at viewport sizes; happens at most once per
+        # frame.
+        layer = pygame.Surface(self._viewport.get_size(), pygame.SRCALPHA)
+        pygame.draw.rect(
+            layer, (*GIZMO_HOVER_RGB, GIZMO_HOVER_ALPHA), rect,
+            width=GIZMO_HOVER_PX,
+        )
+        self._viewport.blit(layer, (0, 0))
+
     # ── ImGui layout ──────────────────────────────────────────────────────────
 
     def _render_imgui(self) -> None:
         """Render all ImGui panels for this frame."""
         descriptor = self._get_descriptor()
 
-        # A reset is requested either by the first-run flag or by the toolbar's
-        # "Reset Layout" menu item. Consume both — they are one-shot.
-        was_reset = self._reset_layout_flag or getattr(self._state, "reset_layout", False)
+        was_reset = self._reset_layout_flag or getattr(self._state, 'reset_layout', False)
         self._reset_layout_flag = False
-        if hasattr(self._state, "reset_layout"):
+        if hasattr(self._state, 'reset_layout'):
             self._state.reset_layout = False
-
-        # Apply the hardcoded default layout BEFORE any window is begun this
-        # frame, so ImGui places the panels using the freshly loaded settings.
-        if was_reset:
-            self._apply_default_layout()
+        reset = was_reset
 
         render_toolbar(self._state)
-        self._render_panels(descriptor)
+        self._render_panels(descriptor, reset)
 
-    def _render_panels(self, descriptor) -> None:
-        """
-        Render all editor panels inside a shared DockSpace.
+        if was_reset:
+            _save_imgui_ini()
 
-        Panel geometry is never forced here. On a normal frame ImGui's saved
-        ini owns it; on a reset frame the hardcoded default layout was just
-        loaded into ImGui by ``_apply_default_layout()`` and ImGui places the
-        panels from that. Only size constraints (min/max) are applied, which
-        never fight the loaded layout.
-        """
-        # ── DockSpace below the toolbar ──────────────────────────────────────
+    def _build_default_dock_layout(self, dockspace_id: int) -> None:
+        """Construct the default docked layout via the dock-builder API."""
+        dir_left = _resolve_dir("left")
+        dir_up   = _resolve_dir("up")
+
+        try:
+            di = imgui.internal  # type: ignore[attr-defined]
+        except AttributeError:
+            di = imgui
+
+        try:
+            di.dock_builder_remove_node(dockspace_id)
+        except Exception:
+            pass
+
+        try:
+            flag_none = imgui.DockNodeFlags_.none.value  # type: ignore[attr-defined]
+        except Exception:
+            flag_none = 0
+        di.dock_builder_add_node(dockspace_id, flag_none)
+
+        ds_size = imgui.ImVec2(
+            float(EDITOR_WIDTH),
+            float(max(1, EDITOR_HEIGHT - TOOLBAR_H)),
+        )
+        di.dock_builder_set_node_size(dockspace_id, ds_size)
+
+        left_ratio = max(0.05, min(0.5, PANEL_WIDTH / float(EDITOR_WIDTH)))
+
+        left_id, center_id = _split_node(di, dockspace_id, dir_left, left_ratio)
+        hier_id, insp_id   = _split_node(di, left_id,      dir_up,   0.55)
+
+        print(
+            f"[editor] dock layout built: "
+            f"dockspace={dockspace_id:#x} "
+            f"hier={hier_id:#x} insp={insp_id:#x} center={center_id:#x}"
+        )
+
+        di.dock_builder_dock_window(WIN_HIERARCHY, hier_id)
+        di.dock_builder_dock_window(WIN_INSPECTOR, insp_id)
+        di.dock_builder_dock_window(WIN_SCENE,     center_id)
+
+        di.dock_builder_finish(dockspace_id)
+
+        self._scene_dock_id = center_id
+
+    def _render_panels(self, descriptor, reset: bool) -> None:
+        """Render all editor panels inside a shared DockSpace."""
+        if reset:
+            try:
+                imgui.load_ini_settings_from_memory("")  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+        dockspace_id = 0
         try:
             vp = imgui.get_main_viewport()
             orig_pos  = vp.work_pos
             orig_size = vp.work_size
             vp.work_pos  = imgui.ImVec2(orig_pos.x,  orig_pos.y  + TOOLBAR_H)  # type: ignore[attr-defined]
             vp.work_size = imgui.ImVec2(orig_size.x, orig_size.y - TOOLBAR_H)  # type: ignore[attr-defined]
-            imgui.dock_space_over_viewport(0, vp, 0)
+            dockspace_id = imgui.dock_space_over_viewport(0, vp, 0)
             vp.work_pos  = orig_pos   # type: ignore[attr-defined]
             vp.work_size = orig_size  # type: ignore[attr-defined]
         except Exception:
             try:
-                imgui.dock_space_over_viewport(0, imgui.get_main_viewport(), 0)
+                dockspace_id = imgui.dock_space_over_viewport(0, imgui.get_main_viewport(), 0)
             except Exception:
-                pass
+                dockspace_id = 0
 
-        # ── Panel windows ────────────────────────────────────────────────────
-        imgui.set_next_window_size_constraints(
-            imgui.ImVec2(120, 100), imgui.ImVec2(EDITOR_WIDTH * 0.5, EDITOR_HEIGHT),
-        )
+        if reset and dockspace_id:
+            try:
+                self._build_default_dock_layout(dockspace_id)
+            except Exception as exc:
+                print(f"[editor] dock layout build FAILED: {exc}")
+                traceback.print_exc()
+
         render_hierarchy(self._state, descriptor)
-
-        imgui.set_next_window_size_constraints(
-            imgui.ImVec2(120, 100), imgui.ImVec2(EDITOR_WIDTH * 0.5, EDITOR_HEIGHT),
-        )
         render_inspector(self._state, descriptor)
 
-        # Scene — a normal, named, dockable window. NO no_saved_settings flag,
-        # so ImGui persists its dock state like every other panel.
-        imgui.set_next_window_size_constraints(
-            imgui.ImVec2(200, 200), imgui.ImVec2(EDITOR_WIDTH, EDITOR_HEIGHT),
-        )
+        if reset and self._scene_dock_id:
+            try:
+                imgui.set_next_window_dock_id(self._scene_dock_id, imgui.Cond_.always)
+            except Exception:
+                pass
         scene_flags = (
-            getattr(imgui.WindowFlags_, "no_scrollbar",          0)
-            | getattr(imgui.WindowFlags_, "no_scroll_with_mouse", 0)
+            getattr(imgui.WindowFlags_, "no_scrollbar",           0)
+            | getattr(imgui.WindowFlags_, "no_scroll_with_mouse",  0)
+            | getattr(imgui.WindowFlags_, "no_saved_settings",     0)
         )
         imgui.begin(WIN_SCENE, None, scene_flags)
         if self._tex_id:
             size = imgui.get_content_region_avail()
             w, h = max(1.0, size.x), max(1.0, size.y)
-            try:
-                tex_ref = imgui.ImTextureRef(self._tex_id)  # type: ignore[arg-type]
-                imgui.image(
-                    tex_ref,
-                    imgui.ImVec2(w, h),
-                    imgui.ImVec2(0, 1),
-                    imgui.ImVec2(1, 0),
-                )
-            except (AttributeError, TypeError):
-                try:
-                    imgui.image(self._tex_id, (w, h))  # type: ignore[arg-type]
-                except Exception:
-                    pass
+            _render_texture(self._tex_id, w, h)
         else:
-            imgui.text_colored((0.4, 0.4, 0.4, 1.0), "Viewport loading...")
+            imgui.text_colored((0.4, 0.4, 0.4, 1.0), "Scene loading...")
         imgui.end()
 
     def _get_descriptor(self):
@@ -525,48 +674,75 @@ class EditorApplication:
             return
 
         from editor.scene_loader import load_scene_for_editor
-        self._scene, status, layout_path = load_scene_for_editor(
+        result = load_scene_for_editor(
             self._scene_class,
             width=VIEWPORT_W,
             height=VIEWPORT_H,
         )
+        if isinstance(result, (list, tuple)) and len(result) >= 2:
+            self._scene = result[0]
+            status      = str(result[1])
+        else:
+            self._scene = None
+            status      = f"Unexpected return from loader: {result!r}"
         self._state.set_status(status)
-        self._layout_path = layout_path
-
+        print(f"[editor] _load_scene: {status}")
         if self._scene is not None:
             self._state.scene_path = self._scene_class.__name__
-        self._state.layout_path = str(layout_path) if layout_path else None
 
     # ── OpenGL texture upload ─────────────────────────────────────────────────
 
     def _surface_to_texture(self, surface: pygame.Surface) -> int:
-        """Upload a pygame Surface to an OpenGL texture and return its id."""
+        """
+        Upload a pygame Surface to an OpenGL texture.
+
+        pygame surfaces are top-down; OpenGL samples bottom-up. We flip
+        the surface before upload, and ImGui's image() uses UVs (0,1)–(1,0)
+        to flip back. Both together give a right-side-up image.
+        """
+        flipped = pygame.transform.flip(surface, False, True)
+        texture_data = pygame.image.tobytes(flipped, "RGBA", False)
+        w, h = surface.get_size()
+
+        try:
+            from imgui_bundle.python_backends import gl as igl  # type: ignore[import]
+            if self._tex_id:
+                igl.glDeleteTextures([self._tex_id])
+            tex_id = int(igl.glGenTextures(1))
+            igl.glBindTexture(igl.GL_TEXTURE_2D, tex_id)
+            igl.glTexParameteri(igl.GL_TEXTURE_2D, igl.GL_TEXTURE_MIN_FILTER, igl.GL_LINEAR)
+            igl.glTexParameteri(igl.GL_TEXTURE_2D, igl.GL_TEXTURE_MAG_FILTER, igl.GL_LINEAR)
+            igl.glTexParameteri(igl.GL_TEXTURE_2D, igl.GL_TEXTURE_WRAP_S, igl.GL_CLAMP_TO_EDGE)
+            igl.glTexParameteri(igl.GL_TEXTURE_2D, igl.GL_TEXTURE_WRAP_T, igl.GL_CLAMP_TO_EDGE)
+            igl.glTexImage2D(
+                igl.GL_TEXTURE_2D, 0, igl.GL_RGBA, w, h, 0,
+                igl.GL_RGBA, igl.GL_UNSIGNED_BYTE, texture_data,
+            )
+            igl.glBindTexture(igl.GL_TEXTURE_2D, 0)
+            return tex_id
+        except Exception:
+            pass
+
         try:
             from OpenGL import GL as gl
-
             if self._tex_id:
                 gl.glDeleteTextures([self._tex_id])
-
-            texture_data = pygame.image.tobytes(surface, "RGBA", False)
-            w, h = surface.get_size()
-
             tex_id = int(gl.glGenTextures(1))
             gl.glBindTexture(gl.GL_TEXTURE_2D, tex_id)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D,
-                               gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D,
-                               gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D,
-                               gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D,
-                               gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
             gl.glTexImage2D(
                 gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0,
                 gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, texture_data,
             )
             gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
             return tex_id
-        except Exception:
+        except Exception as e:
+            if not hasattr(self, "_tex_error_logged"):
+                self._tex_error_logged = True
+                print(f"[editor] Texture upload failed: {e}")
             return 0
 
     # ── Resize ────────────────────────────────────────────────────────────────
@@ -640,28 +816,8 @@ class EditorApplication:
     # ── Shutdown ──────────────────────────────────────────────────────────────
 
     def _shutdown(self) -> None:
-        """Clean up scene, persist state, and tear down imgui and pygame."""
-        if self._state.is_editing:
-            descriptor = self._get_descriptor()
-            if descriptor is not None and self._layout_path is not None:
-                try:
-                    descriptor.save(self._layout_path)
-                    print(f"[editor] layout saved on exit → {self._layout_path}")
-                except OSError as exc:
-                    print(f"[editor] layout save on exit FAILED: {exc}",
-                          file=sys.stderr)
-
-        try:
-            save_settings(self._state)
-            print("[editor] editor settings saved")
-        except Exception as exc:
-            print(f"[editor] settings save FAILED: {exc}", file=sys.stderr)
-
-        try:
-            imgui.save_ini_settings_to_disk(str(IMGUI_INI_PATH))  # type: ignore[attr-defined]
-            print(f"[editor] imgui.ini saved → {IMGUI_INI_PATH}")
-        except Exception as exc:
-            print(f"[editor] imgui.ini save FAILED: {exc}", file=sys.stderr)
+        """Clean up scene, imgui, and pygame."""
+        _save_imgui_ini()
 
         if self._scene is not None:
             try:

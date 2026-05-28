@@ -151,9 +151,14 @@ class ButtonDescribedScene(DescribedScene):
             obs  = node.props.get(key)
             return obs.value if obs is not None else default
 
-        # Root
+        # Root — suppress the default themed background so the scene's own
+        # fill (in render()) shows through. Panel.render() calls
+        # self._draw_background(surface, ctx); because we're assigning a
+        # plain function to an instance attribute (not a method), Python
+        # does NOT bind self, so the lambda must accept exactly the two
+        # args the call site passes: (surface, ctx).
         root = Panel(r("root"))
-        root._draw_background = lambda s: None  # type: ignore[method-assign]
+        root._draw_background = lambda s, ctx: None  # type: ignore[method-assign]
 
         # Title
         title = Label(r("title"),

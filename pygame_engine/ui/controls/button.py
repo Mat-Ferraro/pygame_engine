@@ -120,13 +120,14 @@ class Button(Widget):
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt: float) -> None:
-        """Update hover and pressed state from the current mouse position."""
-        theme = ctx.theme
-        self._label.colour = (
-            theme.button.text_disabled.colour
-            if not self.enabled
-            else theme.button.text.colour
-        )
+        """
+        Per-frame update hook.
+
+        Hover state is already maintained by ``Widget.handle_event`` via
+        MOUSEMOTION, and pressed state is tracked in ``_handle_event_widget``,
+        so this method has no work to do. Label colour is resolved from the
+        active theme in ``render`` where the RenderContext is available.
+        """
 
     # ── Render ────────────────────────────────────────────────────────────────
 
@@ -138,13 +139,22 @@ class Button(Widget):
         theme = ctx.theme
         style = self._resolve_style(theme)
 
+        # Resolve label colour for the current state. Done here (not in
+        # update) because the RenderContext — and therefore the active
+        # theme — is only guaranteed available during render.
+        self._label.colour = (
+            theme.button.text_disabled.colour
+            if not self.enabled
+            else theme.button.text.colour
+        )
+
         draw_surface_style(surface, self.rect, style)
         # Focus ring
         if self.focused and self.enabled:
             pygame.draw.rect(surface, theme.colours.border_focus,
                              self.rect.inflate(4, 4), width=2,
                              border_radius=style.radius + 2)
-        self._label.render(surface)
+        self._label.render(surface, ctx)
 
     def _resolve_style(self, theme: object) -> object:  # type: ignore[return]
         """Return the SurfaceStyle for the current interaction state."""
