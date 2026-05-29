@@ -31,7 +31,7 @@ by LOGGING_STANDARDS.md.
 **Where:**
 - `pygame_engine/dialogue/runner.py:17-18` — `print()` in example
   lambdas at module level. These run when the module is imported.
-- `pygame_engine/debug/crash_log.py:64,66,81,83` — `print()` to stderr.
+- `pygame_engine/devtools/crash_log.py:64,66,81,83` — `print()` to stderr.
   These are intentional stderr output for crash reporting. This is a
   legitimate exception — `debug_log` cannot be used here because the
   crash reporter runs when the engine is broken. Document as an explicit
@@ -114,12 +114,12 @@ if not already present.
 
 ### N4 — `NamedTuple` Import — Review Required
 
-**What:** `pygame_engine/debug/debug_log.py:22` imports `NamedTuple`
+**What:** `pygame_engine/devtools/debug_log.py:22` imports `NamedTuple`
 from `typing`. `NamedTuple` is not deprecated and cannot be replaced
 with built-in syntax — this is not a violation. However, confirm the
 import is still needed and not a leftover.
 
-**Where:** `pygame_engine/debug/debug_log.py:22`
+**Where:** `pygame_engine/devtools/debug_log.py:22`
 
 **Action:** Confirm `NamedTuple` is actively used in `debug_log.py`. If
 it is, add it to the "permitted typing imports" exception list in

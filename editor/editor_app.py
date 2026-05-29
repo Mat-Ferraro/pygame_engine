@@ -267,6 +267,14 @@ class EditorApplication:
         self._reset_layout_flag: bool = True
         self._scene_dock_id: int = 0
 
+        # Screen-space rect of the Scene viewport image as drawn by ImGui,
+        # in (x0, y0, x1, y1) form. Updated every frame while the Scene
+        # window is being rendered, then read by the event loop to map
+        # mouse positions into scene-surface coordinates for hit-testing.
+        # None means "image not drawn yet this run" — mouse handling
+        # treats that as no-hit and ignores clicks.
+        self._scene_image_rect_screen: tuple[float, float, float, float] | None = None
+
     # ── Public entry point ────────────────────────────────────────────────────
 
     def run(self) -> None:
@@ -372,6 +380,12 @@ class EditorApplication:
                         self._state.enter_play() if self._state.is_editing else self._state.enter_edit()
                     if event.key == pygame.K_ESCAPE and self._state.is_playing:
                         self._state.enter_edit()
+                elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION):
+                    # Viewport selection / hover. The handler is a no-op
+                    # if the mouse is outside the Scene image, so it's
+                    # safe to call for every mouse event without an
+                    # explicit "is over scene" gate here.
+                    self._handle_viewport_mouse_event(event)
 
             self._update_scene(dt)
             self._handle_pending_actions()
@@ -586,6 +600,123 @@ class EditorApplication:
         )
         self._viewport.blit(layer, (0, 0))
 
+    # ── Viewport interaction ──────────────────────────────────────────────────
+
+    def _screen_to_scene_coords(
+        self, screen_x: float, screen_y: float,
+    ) -> tuple[float, float] | None:
+        """
+        Map a screen-space mouse position into scene-surface coordinates.
+
+        The Scene window's image is drawn at an arbitrary screen position
+        and size (it depends on the docking layout), but the underlying
+        scene surface has fixed dimensions ``VIEWPORT_W × VIEWPORT_H``.
+        This computes the proportional position inside the image and
+        scales it back into scene-surface pixel space, so a click at
+        the centre of the displayed image lands at the centre of the
+        scene regardless of how the user has sized the panel.
+
+        Args:
+            screen_x: Mouse X in pygame/ImGui screen coordinates (the
+                two share the same coordinate space).
+            screen_y: Mouse Y in the same space.
+
+        Returns:
+            ``(scene_x, scene_y)`` in scene-surface pixel coordinates, or
+            ``None`` if the mouse is outside the Scene image (or the
+            image has not been drawn yet this run).
+        """
+        rect = self._scene_image_rect_screen
+        if rect is None:
+            return None
+        x0, y0, x1, y1 = rect
+        if not (x0 <= screen_x < x1 and y0 <= screen_y < y1):
+            return None
+        img_w = x1 - x0
+        img_h = y1 - y0
+        if img_w <= 0 or img_h <= 0:
+            return None
+        sx = (screen_x - x0) / img_w * float(VIEWPORT_W)
+        sy = (screen_y - y0) / img_h * float(VIEWPORT_H)
+        return sx, sy
+
+    def _hit_test_at_scene_pos(
+        self, scene_x: float, scene_y: float,
+    ) -> str | None:
+        """
+        Find the topmost selectable node whose rect contains the point.
+
+        Iterates the descriptor's nodes in reverse insertion order, since
+        widgets render in insertion order — later-inserted nodes draw on
+        top, so reverse iteration is topmost-first. Returns the first hit.
+
+        Nodes marked ``editor_visible=False`` are skipped (invisible to
+        the editor means unselectable). ``editor_locked`` nodes ARE still
+        selectable — locking only prevents *editing*, so the user can
+        still click a locked node to see its properties in the inspector.
+
+        Args:
+            scene_x, scene_y: Point in scene-surface pixel coordinates.
+
+        Returns:
+            The widget_id of the topmost hit, or ``None`` if the point
+            is over empty scene background.
+        """
+        if not isinstance(self._scene, DescribedScene):
+            return None
+        descriptor = getattr(self._scene, "layout", None)
+        if descriptor is None:
+            return None
+
+        # Reverse iteration = topmost first. ``all_nodes`` is a
+        # @property on SceneDescriptor — read it, don't call it.
+        for node in reversed(descriptor.all_nodes):
+            if not getattr(node, "editor_visible", True):
+                continue
+            try:
+                r = node.rect.to_pygame_rect()
+            except Exception:
+                continue
+            if r.width <= 0 or r.height <= 0:
+                continue
+            if r.collidepoint(scene_x, scene_y):
+                return node.widget_id
+        return None
+
+    def _handle_viewport_mouse_event(self, event: pygame.event.Event) -> None:
+        """
+        Process a mouse event for viewport selection / hover.
+
+        Called from the main event loop on MOUSEBUTTONDOWN and MOUSEMOTION
+        events, but only in EDIT mode — play mode passes mouse events
+        through to the running scene unchanged. Other mouse buttons
+        (right-click, middle-click) are ignored here; left-button only.
+        """
+        # Edit-mode only. In play mode, the game owns the mouse.
+        if not self._state.is_editing:
+            return
+
+        coords = self._screen_to_scene_coords(*event.pos)
+
+        if event.type == pygame.MOUSEMOTION:
+            # Hover: clear when off-viewport, update otherwise. Cheap to
+            # write a None every frame the mouse is outside the panel.
+            self._state.hovered_node_id = (
+                self._hit_test_at_scene_pos(*coords) if coords else None
+            )
+            return
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if coords is None:
+                # Click landed outside the Scene image — could be on
+                # another panel (Hierarchy / Inspector / toolbar). Don't
+                # touch selection in that case.
+                return
+            hit = self._hit_test_at_scene_pos(*coords)
+            # Clicking empty scene background deselects, matching Unity /
+            # Figma / most editors. Clicking a node selects it.
+            self._state.select(hit)
+
     # ── ImGui layout ──────────────────────────────────────────────────────────
 
     def _render_imgui(self) -> None:
@@ -698,8 +829,21 @@ class EditorApplication:
         if self._tex_id:
             size = imgui.get_content_region_avail()
             w, h = max(1.0, size.x), max(1.0, size.y)
+            # Cache the screen-space rect of the image we're about to draw.
+            # ``get_cursor_screen_pos`` returns the top-left of the next
+            # widget to be placed in absolute screen coordinates — same
+            # coordinate space pygame mouse events use — so this is the
+            # anchor for viewport→scene mapping in _hit_test_*.
+            origin = imgui.get_cursor_screen_pos()
+            self._scene_image_rect_screen = (
+                float(origin.x), float(origin.y),
+                float(origin.x) + w, float(origin.y) + h,
+            )
             _render_texture(self._tex_id, w, h)
         else:
+            # No image drawn this frame — clear the cached rect so any
+            # stray click can't map onto a stale region of the screen.
+            self._scene_image_rect_screen = None
             imgui.text_colored((0.4, 0.4, 0.4, 1.0), "Scene loading...")
         imgui.end()
 
